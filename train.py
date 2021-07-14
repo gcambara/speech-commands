@@ -6,7 +6,6 @@ from src.config.arguments import parse_arguments
 from src.datamodules.speech_commands import SpeechCommandsDataModule
 from src.models.lightning_model import LightningModel
 import torch
-from torch.utils.data import DataLoader
 import yaml
 
 def save_cfg(cfg, out_dir):

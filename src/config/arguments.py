@@ -9,7 +9,7 @@ def parse_arguments(stage='train'):
     parser.add_argument('--data', default='', help='path to the data dir where Google Speech Commands is to be found')
     parser.add_argument('--run_dir', default='', help='path to the directory where output files shall be generated')
     parser.add_argument('--seed', type=int, default=0, help='seed')
-    parser.add_argument('--precision', type=int, default=16, help='type precision of tensors: double precision (64), full precision (32), half precision (16)')
+    parser.add_argument('--precision', type=int, default=32, help='type precision of tensors: double precision (64), full precision (32), half precision (16)')
     parser.add_argument('--resume_from_ckpt', default=None, help='path to the checkpoint to resume training from')
 
     # Cuda options
