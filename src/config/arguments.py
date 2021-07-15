@@ -47,8 +47,8 @@ def parse_arguments(stage='train'):
     parser.set_defaults(mfcc=False)
     parser.add_argument('--chunk_size', type=int, default=16000, help='audio chunk size in sample points for training')
     parser.add_argument('--sampling_rate', type=int, default=16000, help='sampling rate')
-    parser.add_argument('--n_fft', type=int, default=512, help='number of frequency bins in the STFT')
-    parser.add_argument('--n_mels', type=int, default=40, help='number of mels')
+    parser.add_argument('--n_fft', type=int, default=1024, help='number of frequency bins in the STFT')
+    parser.add_argument('--n_mels', type=int, default=128, help='number of mels')
     parser.add_argument('--win_length', type=float, default=0.025, help='window length in seconds, for STFT computation')
     parser.add_argument('--hop_length', type=float, default=0.010, help='hop length in seconds, for STFT computation')
 

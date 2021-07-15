@@ -3,9 +3,11 @@
 import pytorch_lightning as pl
 import torch
 from torch import nn
+import torch.nn.functional as F
 from torch.optim.lr_scheduler import StepLR
 import torchmetrics
 from ..modules.features import MelFilterbank
+from vit_pytorch import ViT
 
 class LightningModel(pl.LightningModule):
     '''Base class for the Speech Commands Detection models'''
@@ -27,6 +29,137 @@ class LightningModel(pl.LightningModule):
         if cfg.arch not in cls.subclasses:
             raise ValueError(f"Unknown architecture name set in --arch: {cfg.arch}")
         return cls.subclasses[cfg.arch](cfg, num_classes)
+
+@LightningModel.register_model('vit')
+class SpeechViT(LightningModel):
+    def __init__(self, cfg, num_classes):
+        super().__init__()
+        self.save_hyperparameters()
+
+        self.cfg = cfg
+        self.num_classes = num_classes
+        self.chunk_size = cfg.chunk_size
+        self.lr = cfg.lr
+        self.lr_scheduler = cfg.lr_scheduler
+        self.lr_gamma = cfg.lr_gamma
+        self.lr_step_size = cfg.lr_step_size
+        self.n_fft = cfg.n_fft
+        self.n_mels = cfg.n_mels
+        self.sr = cfg.sampling_rate
+        self.win_length = int(self.sr * cfg.win_length)
+        self.hop_length = int(self.sr * cfg.hop_length)
+        #self.freq_size, self.time_size = self.compute_features_size()
+        self.time_size = 93
+
+        self.log_model_params = cfg.log_model_params
+
+        self.train_acc = torchmetrics.Accuracy()
+        self.valid_acc = torchmetrics.Accuracy()
+
+        self.mels = nn.Sequential(
+            MelFilterbank(sampling_rate=self.sr, n_fft=self.n_fft, n_mels=self.n_mels, win_length=self.win_length, hop_length=self.hop_length, window_fn=torch.hamming_window),
+            nn.InstanceNorm2d(1)
+        )
+
+        # self.conv_blocks = nn.Sequential( #bs, 1, 40, 101
+        #     nn.Conv1d(self.n_mels, 128, kernel_size=5),
+        #     nn.ReLU(),
+        #     nn.Conv1d(128, 256, kernel_size=5),
+        #     nn.ReLU(),
+        #     nn.Dropout(),
+        # )
+
+        # self.deconv_blocks = nn.Sequential(
+        #     nn.ConvTranspose1d(self.time_size, 256, kernel_size=1)
+        # )
+
+        self.projection = nn.Linear(1, 3)
+
+        self.vit = ViT(
+                        image_size = 128,
+                        patch_size = 16,
+                        num_classes = self.num_classes,
+                        dim = 1024,
+                        depth = 6,
+                        heads = 16,
+                        mlp_dim = 2048,
+                        dropout = 0.1,
+                        emb_dropout = 0.1
+                    )
+
+        self.loss = nn.CrossEntropyLoss()
+
+    def forward(self, x):
+        x = self.mels(x)
+        # Approach A with convolutions
+        # x = x.squeeze(dim=1)
+        # x = self.conv_blocks(x)
+        # x = x.transpose(1, 2)
+        # x = self.deconv_blocks(x)
+        # x = x.transpose(1, 2)
+        # x = x.unsqueeze(dim=1)
+        # x = x.transpose(1, -1)
+        # x = self.projection(x)
+        # x = x.transpose(1, -1)
+
+        # Approach B with simple mel-spectrogram
+        #x = torch.cat([x, x, x], dim=1)
+        x = x.transpose(1, -1)
+        x = self.projection(x)
+        x = x.transpose(1, -1)
+
+        x = F.pad(x, (13, 14), "constant", 0)
+        x = self.vit(x)
+        return x
+
+    def training_step(self, batch, batch_idx):
+        x, targets = batch
+        preds = self(x)
+
+        loss = self.loss(preds, targets)
+        self.train_acc(preds, targets)
+
+        self.log(f'train_loss', loss, on_epoch=True, prog_bar=True, sync_dist=True)
+        self.log(f'train_acc', self.train_acc, on_epoch=True, prog_bar=True, sync_dist=True)
+        return {'loss': loss, 'preds': preds, 'targets': targets}
+
+    def validation_step(self, batch, batch_idx):
+        x, targets = batch
+        preds = self(x)
+
+        loss = self.loss(preds, targets)
+        self.valid_acc(preds, targets)
+        self.log('dev_acc', self.valid_acc, on_step=False, on_epoch=True)
+        return {'loss': loss, 'preds': preds, 'targets': targets}
+
+    def validation_epoch_end(self, outputs):
+        self.log_avg_loss(outputs)
+
+    def log_avg_loss(self, outputs):
+        avg_loss = 0
+        for index, batch_output in enumerate(outputs):
+            batch_total_loss = batch_output['loss']
+            avg_loss += batch_total_loss / len(outputs)
+
+        self.log(f'dev_loss', avg_loss, on_epoch=True, prog_bar=True, sync_dist=True)
+
+    def compute_features_size(self):
+        freq_size = int(((self.n_mels - 5 + 1) / 2 - 5 + 1) / 2)
+
+        timesteps = int((self.chunk_size - (self.n_fft // 2 + 1) + 2*self.hop_length) / self.hop_length) + 1
+        time_size = int(((timesteps - 5 + 1) / 2 - 5 + 1) / 2)
+        return freq_size, time_size
+
+    def configure_optimizers(self):
+        optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
+        if self.lr_scheduler == 'constant':
+            return optimizer
+        elif self.lr_scheduler == 'step_lr':
+            scheduler = StepLR(optimizer, step_size=self.lr_step_size, gamma=self.lr_gamma)
+            return [optimizer], [scheduler]
+        else:
+            print(f"Warning! Unrecognized learning rate scheduler {self.lr_scheduler}. Training will be done without a scheduler.")
+            return optimizer
 
 @LightningModel.register_model('lenet')
 class LeNet(LightningModel):
@@ -151,14 +284,3 @@ class LeNet(LightningModel):
         else:
             print(f"Warning! Unrecognized learning rate scheduler {self.lr_scheduler}. Training will be done without a scheduler.")
             return optimizer
-
-    # def configure_metrics(self):
-    #     splits = ["train", "dev", "test"] # note that we cannot have the split be name train/training as these are protected attributes in pytorch
-    #     accuracy_list = nn.ModuleList([torchmetrics.Accuracy() for _ in splits])
-    #     #f1_list = nn.ModuleList([F1(num_classes=self.cfg.DATA.NUM_CLASSES) for _ in splits])
-
-    #     self.metrics_dict = nn.ModuleDict({split : nn.ModuleDict() for split in splits})
-    #     for split, acc in zip(splits, accuracy_list):
-    #         self.metrics_dict[split].update({'accuracy': acc})
-    #     #for split, acc, f1 in zip(splits, accuracy_list, f1_list):
-    #     #    self.metrics_dict[split].update({'accuracy': acc, 'f1' : f1})
