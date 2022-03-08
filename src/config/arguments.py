@@ -37,6 +37,7 @@ def parse_arguments(stage='train'):
     parser.set_defaults(shuffle_test=False)
     parser.add_argument('--num_workers', type=int, default=0, help='how many subprocesses to use for data loading')
     parser.add_argument('--limit_train_batches', type=float, default=1.0, help='only use this percentage of samples for training')
+    parser.add_argument('--num_labels', type=int, default=35, help='how many labels to use with Speech Commands: 10 | 20 | 35')
 
     # Audio processing options
     parser.add_argument('--waveform', dest='waveform', action='store_true', help='set waveform as the audio input type')

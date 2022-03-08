@@ -14,6 +14,7 @@ class SpeechCommandsDataModule(pl.LightningDataModule):
             os.makedirs(self.root)
         self.url = 'speech_commands_v0.02'
         self.chunk_size = cfg.chunk_size
+        self.num_labels = cfg.num_labels
 
         self.batch_size = cfg.batch_size
         self.batch_size_dev = cfg.batch_size_dev
@@ -33,7 +34,12 @@ class SpeechCommandsDataModule(pl.LightningDataModule):
         self.dev_dataset = SPEECHCOMMANDS(self.root, url=self.url, download=False, subset='validation')
         self.test_dataset = SPEECHCOMMANDS(self.root, url=self.url, download=False, subset='testing')
 
-        self.labels = sorted(['backward', 'bed', 'bird', 'cat', 'dog', 'down', 'eight', 'five', 'follow', 'forward', 'four', 'go', 'happy', 'house', 'learn', 'left', 'marvin', 'nine', 'no', 'off', 'on', 'one', 'right', 'seven', 'sheila', 'six', 'stop', 'three', 'tree', 'two', 'up', 'visual', 'wow', 'yes', 'zero'])
+        if self.num_labels == 35:
+            self.labels = sorted(['backward', 'bed', 'bird', 'cat', 'dog', 'down', 'eight', 'five', 'follow', 'forward', 'four', 'go', 'happy', 'house', 'learn', 'left', 'marvin', 'nine', 'no', 'off', 'on', 'one', 'right', 'seven', 'sheila', 'six', 'stop', 'three', 'tree', 'two', 'up', 'visual', 'wow', 'yes', 'zero'])
+        elif self.num_labels == 20:
+            self.labels = sorted(['unknown', 'yes', 'no', 'up', 'down', 'left', 'right', 'on', 'off', 'stop', 'go', 'zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'])
+        elif self.num_labels == 10:
+            self.labels = sorted(['unknown', 'left', 'right', 'yes', 'no', 'up', 'down', 'on', 'off', 'stop', 'go'])
 
     def train_dataloader(self):
         return DataLoader(self.train_dataset, batch_size=self.batch_size, shuffle=self.shuffle, num_workers=self.num_workers, collate_fn=self.collater, pin_memory=self.use_cuda)
@@ -49,6 +55,8 @@ class SpeechCommandsDataModule(pl.LightningDataModule):
         labels = []
         for (waveform, _, label, *_) in samples:
             waveforms.append(waveform.squeeze())
+            if label not in self.labels:
+                label = 'unknown'
             labels.append(self.label_to_index(label))
 
         waveforms = nn.utils.rnn.pad_sequence(waveforms, batch_first=True).unsqueeze(1)
