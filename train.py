@@ -44,7 +44,7 @@ def main():
     dm.prepare_data()
     dm.setup()
 
-    model = LightningModel().build_model(cfg, num_classes=len(dm.labels))
+    model = LightningModel(cfg)
 
     logger = pl.loggers.TensorBoardLogger(save_dir=cfg.run_dir, name='tensorboard')
     lr_monitor = LearningRateMonitor(logging_interval='epoch')

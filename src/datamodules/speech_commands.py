@@ -1,3 +1,4 @@
+from einops import rearrange
 import os
 import pytorch_lightning as pl
 import torch
@@ -60,6 +61,7 @@ class SpeechCommandsDataModule(pl.LightningDataModule):
             labels.append(self.label_to_index(label))
 
         waveforms = nn.utils.rnn.pad_sequence(waveforms, batch_first=True).unsqueeze(1)
+        waveforms = rearrange(waveforms, 'b c t -> b t c')
         labels = torch.stack(labels)
 
         return waveforms, labels
