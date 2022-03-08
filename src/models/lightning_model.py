@@ -7,7 +7,7 @@ import torch.nn.functional as F
 from torch.optim.lr_scheduler import StepLR
 import torchmetrics
 from ..modules.features import MelFilterbank
-from ..modules.classifiers import LeNet
+from ..modules.classifiers import LeNet, PerceiverModel
 from vit_pytorch import ViT
 
 class LightningModel(pl.LightningModule):
@@ -112,6 +112,8 @@ class LightningModel(pl.LightningModule):
     def get_classifier(self, classifier_name, time_size, freq_size):
         if classifier_name == 'lenet':
             classifier = LeNet(self.num_labels, time_size, freq_size)
+        elif classifier_name == 'perceiver':
+            classifier = PerceiverModel(self.cfg, self.num_labels)
         else:
             raise NotImplementedError
 

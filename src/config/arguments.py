@@ -57,7 +57,7 @@ def parse_arguments(stage='train'):
     parser.add_argument('--wav_norm', default='layernorm', help='normalization to apply to waveforms: none | ')
     parser.add_argument('--featurizer', default='log-mfsc', help='name of the featurizer to use: mfsc | log-mfsc')
     parser.add_argument('--featurizer_post_norm', default='instancenorm2d', help='normalization to apply after feature extraction: instancenorm2d')
-    parser.add_argument('--classifier', default='lenet', help='architecture name for the model to be trained: lenet | vit')
+    parser.add_argument('--classifier', default='lenet', help='architecture name for the model to be trained: lenet |perceiver')
     parser.add_argument('--loss', default='cross-entropy', help='loss to use: cross-entropy')
 
     # Training options
@@ -82,6 +82,24 @@ def parse_arguments(stage='train'):
     parser.add_argument('--log_model_params', dest='log_model_params', action='store_true', help='log model params and gradients')
     parser.add_argument('--no_log_model_params', dest='log_model_params', action='store_false', help='do not log model params and gradients')
     parser.set_defaults(log_model_params=False)
+
+    # Perceiver options
+    parser.add_argument('--prc_input_channels', type=int, default=128, help='perceiver input channels')
+    parser.add_argument('--prc_input_axis', type=int, default=1, help='perceiver input axis')
+    parser.add_argument('--prc_num_freq_bands', type=int, default=6, help='perceiver num freq bands')
+    parser.add_argument('--prc_max_freq', type=float, default=10., help='perceiver max freq')
+    parser.add_argument('--prc_depth', type=int, default=6, help='perceiver depth')
+    parser.add_argument('--prc_num_latents', type=int, default=256, help='perceiver num latents')
+    parser.add_argument('--prc_latent_dim', type=int, default=512, help='perceiver latent dim')
+    parser.add_argument('--prc_cross_heads', type=int, default=1, help='perceiver cross_heads')
+    parser.add_argument('--prc_latent_heads', type=int, default=8, help='perceiver latent heads')
+    parser.add_argument('--prc_cross_dim_head', type=int, default=64, help='perceiver cross dim head')
+    parser.add_argument('--prc_latent_dim_head', type=int, default=64, help='perceiver latent dim head')
+    parser.add_argument('--prc_attn_dropout', type=float, default=0.0, help='perceiver attention dropout')
+    parser.add_argument('--prc_ff_dropout', type=float, default=0.0, help='perceiver feedforward dropout')
+    parser.add_argument('--prc_weight_tie_layers', type=int, default=0, help='boolean perceiver weight tie layers')
+    parser.add_argument('--prc_fourier_encode_data', type=int, default=1, help='boolean perceiver fourier encode data')
+    parser.add_argument('--prc_self_per_cross_attn', type=int, default=2, help='perceiver self per cross attention')
 
     args = parser.parse_args()
     if args.config != '':
