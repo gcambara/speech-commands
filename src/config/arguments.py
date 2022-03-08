@@ -54,6 +54,7 @@ def parse_arguments(stage='train'):
     parser.add_argument('--hop_length', type=float, default=0.010, help='hop length in seconds, for STFT computation')
 
     # Model options
+    parser.add_argument('--wav_norm', default='layernorm', help='normalization to apply to waveforms: none | ')
     parser.add_argument('--featurizer', default='log-mfsc', help='name of the featurizer to use: mfsc | log-mfsc')
     parser.add_argument('--featurizer_post_norm', default='instancenorm2d', help='normalization to apply after feature extraction: instancenorm2d')
     parser.add_argument('--classifier', default='lenet', help='architecture name for the model to be trained: lenet | vit')

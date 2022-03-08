@@ -52,6 +52,7 @@ class LightningModel(pl.LightningModule):
         self.test_acc = torchmetrics.Accuracy()
 
         # Build models and losses
+        self.wav_normalization = self.get_wav_normalization(cfg.wav_norm)
         self.featurizer = self.get_featurizer(cfg.featurizer)
         with torch.no_grad():
             _, time_size, freq_size = self.featurizer(torch.randn(1, self.chunk_size, 1)).shape
@@ -61,6 +62,8 @@ class LightningModel(pl.LightningModule):
         self.loss = self.get_loss(cfg.loss)
 
     def forward(self, x):
+        if self.wav_normalization:
+            x = self.wav_normalization(x)
         if self.featurizer:
             x = self.featurizer(x)
         x = self.classifier(x)
@@ -113,6 +116,16 @@ class LightningModel(pl.LightningModule):
             raise NotImplementedError
 
         return classifier
+
+    def get_wav_normalization(self, norm_name):
+        if norm_name == 'layernorm':
+            norm = nn.LayerNorm(normalized_shape=[self.chunk_size, 1])
+        elif norm_name == 'none':
+            norm = None
+        else:
+            raise NotImplementedError
+
+        return norm
 
     def get_loss(self, loss_name):
         if loss_name == 'cross-entropy':
