@@ -1,0 +1,7 @@
+numpy==1.22.3
+pytorch_lightning==1.5.10
+PyYAML==6.0
+torch==1.10.2
+torchaudio==0.10.2
+torchmetrics==0.7.2
+vit_pytorch==0.27.0
