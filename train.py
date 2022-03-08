@@ -46,13 +46,15 @@ def main():
 
     model = LightningModel(cfg)
 
-    logger = pl.loggers.TensorBoardLogger(save_dir=cfg.run_dir, name='tensorboard')
+    logger = [pl.loggers.TensorBoardLogger(save_dir=cfg.run_dir, name='tensorboard'),
+              pl.loggers.CSVLogger(save_dir=cfg.run_dir, name='csv_logger')]
     lr_monitor = LearningRateMonitor(logging_interval='epoch')
 
-    save_cfg(cfg, logger.log_dir)
+    save_cfg(cfg, logger[0].log_dir)
 
     trainer = pl.Trainer(accelerator=cfg.accelerator, callbacks=[lr_monitor], gpus=cfg.num_gpus, deterministic=True, limit_train_batches=cfg.limit_train_batches, logger=logger, max_epochs=cfg.max_epochs, overfit_batches=cfg.overfit_batches, plugins=plugins, precision=cfg.precision, profiler=None, resume_from_checkpoint=cfg.resume_from_ckpt, track_grad_norm=2)
     trainer.fit(model, dm)
+    trainer.test(ckpt_path='best', test_dataloaders=dm.test_dataloader())
 
 if __name__ == '__main__':
     main()

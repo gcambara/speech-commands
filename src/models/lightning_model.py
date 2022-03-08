@@ -16,16 +16,28 @@ class LightningModel(pl.LightningModule):
     def __init__(self, cfg):
         super().__init__()
         self.save_hyperparameters()
-
         self.cfg = cfg
+
+        # Input and output sizes
         self.num_labels = cfg.num_labels
         if self.num_labels == 20 or self.num_labels == 10:
             self.num_labels += 1 # sum 'unknown' class
         self.chunk_size = cfg.chunk_size
+
+        # Optimizer options
+        self.optimizer = cfg.optimizer
+        self.beta1 = cfg.beta1
+        self.beta2 = cfg.beta2
+        self.weight_decay = cfg.weight_decay
+        self.optimizer_eps = cfg.optimizer_eps
+        
+        # LR scheduling
         self.lr = cfg.lr
         self.lr_scheduler = cfg.lr_scheduler
         self.lr_gamma = cfg.lr_gamma
         self.lr_step_size = cfg.lr_step_size
+        
+        # Feature extraction
         self.n_fft = cfg.n_fft
         self.n_mels = cfg.n_mels
         self.sr = cfg.sampling_rate
@@ -33,13 +45,16 @@ class LightningModel(pl.LightningModule):
         self.hop_length = int(self.sr * cfg.hop_length)
         self.featurizer_post_norm = cfg.featurizer_post_norm
 
+        # Metrics
         self.log_model_params = cfg.log_model_params
-
         self.train_acc = torchmetrics.Accuracy()
         self.valid_acc = torchmetrics.Accuracy()
+        self.test_acc = torchmetrics.Accuracy()
 
+        # Build models and losses
         self.featurizer = self.get_featurizer(cfg.featurizer)
-        _, time_size, freq_size = self.featurizer(torch.randn(1, self.chunk_size, 1)).shape
+        with torch.no_grad():
+            _, time_size, freq_size = self.featurizer(torch.randn(1, self.chunk_size, 1)).shape
 
         self.classifier = self.get_classifier(cfg.classifier, time_size, freq_size)
 
@@ -62,13 +77,19 @@ class LightningModel(pl.LightningModule):
         self.train_acc(preds, targets)
         self.log(f'train_loss', loss, on_epoch=True, prog_bar=True, sync_dist=True)
         self.log(f'train_acc', self.train_acc, on_epoch=True, prog_bar=True, sync_dist=True)
-        return {'loss': loss, 'preds': preds, 'targets': targets.detach()}
+        return {'loss': loss, 'preds': preds.detach(), 'targets': targets.detach()}
 
     def validation_step(self, batch, batch_idx):
         loss, preds, targets = self._shared_step(batch, batch_idx)
         self.valid_acc(preds, targets)
         self.log('dev_acc', self.valid_acc, on_step=False, on_epoch=True)
-        return {'loss': loss, 'preds': preds, 'targets': targets.detach()}
+        return {'loss': loss, 'preds': preds.detach(), 'targets': targets.detach()}
+
+    def test_step(self, batch, batch_idx):
+        loss, preds, targets = self._shared_step(batch, batch_idx)
+        self.test_acc(preds, targets)
+        self.log('test_acc', self.test_acc, on_step=False, on_epoch=True)
+        return {'loss': loss, 'preds': preds.detach(), 'targets': targets.detach()}
 
     def validation_epoch_end(self, outputs):
         self.log_avg_loss(outputs)
@@ -98,6 +119,24 @@ class LightningModel(pl.LightningModule):
             loss = nn.CrossEntropyLoss()
         return loss
 
+    def get_optimizer(self, optimizer_name):
+        if optimizer_name == 'adam':
+            optimizer = torch.optim.Adam(self.parameters(),
+                                         lr=self.lr,
+                                         betas=(self.beta1, self.beta2),
+                                         eps=self.optimizer_eps,
+                                         weight_decay=self.weight_decay)
+        elif optimizer_name == 'adamw':
+            optimizer = torch.optim.AdamW(self.parameters(),
+                                         lr=self.lr,
+                                         betas=(self.beta1, self.beta2),
+                                         eps=self.optimizer_eps,
+                                         weight_decay=self.weight_decay)
+        else:
+            raise NotImplementedError
+
+        return optimizer
+
     def log_avg_loss(self, outputs):
         avg_loss = 0
         for index, batch_output in enumerate(outputs):
@@ -107,7 +146,7 @@ class LightningModel(pl.LightningModule):
         self.log(f'dev_loss', avg_loss, on_epoch=True, prog_bar=True, sync_dist=True)
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
+        optimizer = self.get_optimizer(self.optimizer)
         if self.lr_scheduler == 'constant':
             return optimizer
         elif self.lr_scheduler == 'step_lr':
