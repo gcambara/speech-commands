@@ -50,12 +50,14 @@ def parse_arguments(stage='train'):
     parser.add_argument('--sampling_rate', type=int, default=16000, help='sampling rate')
     parser.add_argument('--n_fft', type=int, default=1024, help='number of frequency bins in the STFT')
     parser.add_argument('--n_mels', type=int, default=64, help='number of mels')
+    parser.add_argument('--n_mfcc', type=int, default=40, help='number of MFCCs')
+    parser.add_argument('--deltas', type=int, default=0, help='deltas to compute in feature extraction')
     parser.add_argument('--win_length', type=float, default=0.025, help='window length in seconds, for STFT computation')
     parser.add_argument('--hop_length', type=float, default=0.010, help='hop length in seconds, for STFT computation')
 
     # Model options
     parser.add_argument('--wav_norm', default='layernorm', help='normalization to apply to waveforms: none | ')
-    parser.add_argument('--featurizer', default='log-mfsc', help='name of the featurizer to use: mfsc | log-mfsc')
+    parser.add_argument('--featurizer', default='log-mfsc', help='name of the featurizer to use: mfsc | log-mfsc | mfcc | log-mfcc')
     parser.add_argument('--featurizer_post_norm', default='instancenorm2d', help='normalization to apply after feature extraction: instancenorm2d')
     parser.add_argument('--classifier', default='perceiver', help='architecture name for the model to be trained: lenet |perceiver')
     parser.add_argument('--loss', default='cross-entropy', help='loss to use: cross-entropy')

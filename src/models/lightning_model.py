@@ -6,7 +6,7 @@ from torch import nn
 import torch.nn.functional as F
 from torch.optim.lr_scheduler import StepLR
 import torchmetrics
-from ..modules.features import MelFilterbank
+from ..modules.features import MelFilterbank, Mfcc
 from ..modules.classifiers import LeNet, PerceiverModel
 from vit_pytorch import ViT
 
@@ -40,6 +40,8 @@ class LightningModel(pl.LightningModule):
         # Feature extraction
         self.n_fft = cfg.n_fft
         self.n_mels = cfg.n_mels
+        self.n_mfcc = cfg.n_mfcc
+        self.deltas = cfg.deltas
         self.sr = cfg.sampling_rate
         self.win_length = int(self.sr * cfg.win_length)
         self.hop_length = int(self.sr * cfg.hop_length)
@@ -102,6 +104,10 @@ class LightningModel(pl.LightningModule):
             featurizer = MelFilterbank(sampling_rate=self.sr, n_fft=self.n_fft, n_mels=self.n_mels, win_length=self.win_length, hop_length=self.hop_length, window_fn=torch.hamming_window, apply_log=False, norm=self.featurizer_post_norm)
         elif featurizer_name == 'log-mfsc':
             featurizer = MelFilterbank(sampling_rate=self.sr, n_fft=self.n_fft, n_mels=self.n_mels, win_length=self.win_length, hop_length=self.hop_length, window_fn=torch.hamming_window, apply_log=True, norm=self.featurizer_post_norm)
+        elif featurizer_name == 'mfcc':
+            featurizer = Mfcc(sampling_rate=self.sr, n_fft=self.n_fft, n_mels=self.n_mels, n_mfcc=self.n_mfcc, win_length=self.win_length, hop_length=self.hop_length, window_fn=torch.hamming_window, apply_log=False, norm=self.featurizer_post_norm, deltas=self.deltas)
+        elif featurizer_name == 'log-mfcc':
+            featurizer = Mfcc(sampling_rate=self.sr, n_fft=self.n_fft, n_mels=self.n_mels, n_mfcc=self.n_mfcc, win_length=self.win_length, hop_length=self.hop_length, window_fn=torch.hamming_window, apply_log=True, norm=self.featurizer_post_norm, deltas=self.deltas)
         elif featurizer_name == 'waveform':
             featurizer = None
         else:
