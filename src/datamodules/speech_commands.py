@@ -6,6 +6,14 @@ from torch import nn
 from torch.utils.data import DataLoader
 from torchaudio.datasets import SPEECHCOMMANDS
 
+class SpeechCommands(SPEECHCOMMANDS):
+    def __init__(self, root, url, download, subset=None):
+        super().__init__(root, url=url, download=download, subset=subset)
+
+    def __getitem__(self, index):
+        audio, sample_rate, label, speaker_id, utterance_number = super().__getitem__(index)
+        return audio, sample_rate, label, speaker_id, utterance_number
+
 class SpeechCommandsDataModule(pl.LightningDataModule):
     def __init__(self, cfg):
         super().__init__()
@@ -28,12 +36,12 @@ class SpeechCommandsDataModule(pl.LightningDataModule):
         self.use_cuda = cfg.use_cuda
 
     def prepare_data(self):
-        SPEECHCOMMANDS(self.root, url=self.url, download=True)
+        SpeechCommands(self.root, url=self.url, download=True)
 
     def setup(self, stage=None):
-        self.train_dataset = SPEECHCOMMANDS(self.root, url=self.url, download=False, subset='training')
-        self.dev_dataset = SPEECHCOMMANDS(self.root, url=self.url, download=False, subset='validation')
-        self.test_dataset = SPEECHCOMMANDS(self.root, url=self.url, download=False, subset='testing')
+        self.train_dataset = SpeechCommands(self.root, url=self.url, download=False, subset='training')
+        self.dev_dataset = SpeechCommands(self.root, url=self.url, download=False, subset='validation')
+        self.test_dataset = SpeechCommands(self.root, url=self.url, download=False, subset='testing')
 
         if self.num_labels == 35:
             self.labels = sorted(['backward', 'bed', 'bird', 'cat', 'dog', 'down', 'eight', 'five', 'follow', 'forward', 'four', 'go', 'happy', 'house', 'learn', 'left', 'marvin', 'nine', 'no', 'off', 'on', 'one', 'right', 'seven', 'sheila', 'six', 'stop', 'three', 'tree', 'two', 'up', 'visual', 'wow', 'yes', 'zero'])
