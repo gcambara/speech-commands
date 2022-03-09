@@ -57,7 +57,7 @@ def parse_arguments(stage='train'):
 
     # Model options
     parser.add_argument('--wav_norm', default='layernorm', help='normalization to apply to waveforms: none | ')
-    parser.add_argument('--featurizer', default='log-mfsc', help='name of the featurizer to use: mfsc | log-mfsc | mfcc | log-mfcc')
+    parser.add_argument('--featurizer', default='log-mfsc', help='name of the featurizer to use: mfsc | log-mfsc | mfcc | log-mfcc | waveform')
     parser.add_argument('--featurizer_post_norm', default='instancenorm2d', help='normalization to apply after feature extraction: instancenorm2d')
     parser.add_argument('--classifier', default='perceiver', help='architecture name for the model to be trained: lenet |perceiver')
     parser.add_argument('--loss', default='cross-entropy', help='loss to use: cross-entropy')

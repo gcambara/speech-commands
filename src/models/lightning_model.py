@@ -56,8 +56,11 @@ class LightningModel(pl.LightningModule):
         # Build models and losses
         self.wav_normalization = self.get_wav_normalization(cfg.wav_norm)
         self.featurizer = self.get_featurizer(cfg.featurizer)
-        with torch.no_grad():
-            _, time_size, freq_size = self.featurizer(torch.randn(1, self.chunk_size, 1)).shape
+        if self.featurizer:
+            with torch.no_grad():
+                _, time_size, freq_size = self.featurizer(torch.randn(1, self.chunk_size, 1)).shape
+        else:
+            time_size, freq_size = self.chunk_size, 1
 
         self.classifier = self.get_classifier(cfg.classifier, time_size, freq_size)
 
