@@ -10,13 +10,15 @@ from .augmentations import PadTrim, WaveformAugmentations
 class SpeechCommands(SPEECHCOMMANDS):
     def __init__(self, cfg, root, url, download, subset=None):
         super().__init__(root, url=url, download=download, subset=subset)
-        self.augmentations = WaveformAugmentations(cfg)
+        self.subset = subset
+        self.background_noises_path = os.path.join(root, 'SpeechCommands', url, '_background_noise_')
+        self.augmentations = WaveformAugmentations(cfg, background_noises_path=self.background_noises_path)
         self.pad_trim = PadTrim(max_len=cfg.chunk_size, fill_value=0.0, channels_first=True)
 
     def __getitem__(self, index):
         audio, sample_rate, label, speaker_id, utterance_number = super().__getitem__(index)
 
-        if self.augmentations:
+        if self.augmentations and self.subset == 'training':
             audio = self.augmentations(audio)
 
         audio = self.pad_trim(audio)

@@ -104,11 +104,14 @@ def parse_arguments(stage='train'):
     parser.add_argument('--prc_self_per_cross_attn', type=int, default=1, help='perceiver self per cross attention')
 
     # Data augmentation options
-    parser.add_argument('--time_shift_p', type=float, default=0.3, help='probability of appling time shift augment')
+    parser.add_argument('--time_shift_p', type=float, default=0.3, help='probability of applying time shift augment')
     parser.add_argument('--time_shift_range', type=float, default=0.1, help='time shift range in seconds')
-    parser.add_argument('--resample_p', type=float, default=0.3, help='probability of appling resampling augment')
+    parser.add_argument('--resample_p', type=float, default=0.3, help='probability of applying resampling augment')
     parser.add_argument('--resample_min', type=float, default=0.85, help='minimum fraction of the original sampling rate')
     parser.add_argument('--resample_max', type=float, default=1.15, help='maximum fraction of the original sampling rate')
+    parser.add_argument('--background_noise_p', type=float, default=0.7, help='probability of applying background noises')
+    parser.add_argument('--background_snr_min', type=float, default=0.0, help='min SNR of the background noise')
+    parser.add_argument('--background_snr_max', type=float, default=15.0, help='max SNR of the background noise')
 
     args = parser.parse_args()
     if args.config != '':
