@@ -1,6 +1,7 @@
 from einops import rearrange
 import torch
 from torch import nn
+from torchaudio.transforms import FrequencyMasking, TimeMasking
 from audiomentations import Compose, AddBackgroundNoise, Resample, Shift
 
 class WaveformAugmentations(nn.Module):
@@ -10,45 +11,94 @@ class WaveformAugmentations(nn.Module):
         super().__init__()
         self.chunk_size = cfg.chunk_size
         self.sampling_rate = cfg.sampling_rate
-        self.augmentations = self.build_augmentations(cfg, background_noises_path)
+        self.pad_trim = PadTrim(max_len=cfg.chunk_size, fill_value=0.0, channels_first=True)
+        self.pre_augmentations, self.post_augmentations = self.build_augmentations(cfg, background_noises_path)
 
     def forward(self, x):
-        if self.augmentations:
+        if self.pre_augmentations:
             x = rearrange(x, '1 t -> t')
             x = x.numpy()
-            x = torch.Tensor(self.augmentations(samples=x, sample_rate=self.sampling_rate))
+            x = torch.Tensor(self.pre_augmentations(samples=x, sample_rate=self.sampling_rate))
             x = rearrange(x, 't -> 1 t')
+
+            # Some augmentations like resample change the size of the waveform, refit it
+            if x.size(-1) != self.chunk_size:
+                x = self.pad_trim(x)
+
+        if self.post_augmentations:
+            x = rearrange(x, '1 t -> t')
+            x = x.numpy()
+            x = torch.Tensor(self.post_augmentations(samples=x, sample_rate=self.sampling_rate))
+            x = rearrange(x, 't -> 1 t')
+
         return x
 
     def build_augmentations(self, cfg, background_noises_path=None):
-        augmentations = []
+        pre_augmentations, post_augmentations = [], []
 
         if (cfg.time_shift_p > 0.0) and (cfg.time_shift_range > 0.0):
             fraction = cfg.time_shift_range / (self.chunk_size / self.sampling_rate)
-            augmentations.append(Shift(min_fraction=-fraction,
+            pre_augmentations.append(Shift(min_fraction=-fraction,
                                        max_fraction=fraction,
                                        p=cfg.time_shift_p))
 
         if (cfg.resample_p > 0.0):
             min_sample_rate = int(self.sampling_rate * cfg.resample_min)
             max_sample_rate = int(self.sampling_rate * cfg.resample_max)
-            augmentations.append(Resample(min_sample_rate=min_sample_rate,
+            pre_augmentations.append(Resample(min_sample_rate=min_sample_rate,
                                           max_sample_rate=max_sample_rate,
                                           p=cfg.resample_p))
 
         if (cfg.background_noise_p > 0.0) and background_noises_path:
-            augmentations.append(AddBackgroundNoise(sounds_path=background_noises_path,
+            post_augmentations.append(AddBackgroundNoise(sounds_path=background_noises_path,
                                                     min_snr_in_db=cfg.background_snr_min,
                                                     max_snr_in_db=cfg.background_snr_max,
                                                     noise_rms='relative',
                                                     p=cfg.background_noise_p))
 
+        if pre_augmentations != []:
+            pre_augmentations = Compose(pre_augmentations)
+        else:
+            pre_augmentations = None
+
+        if post_augmentations != []:
+            post_augmentations = Compose(post_augmentations)
+        else:
+            post_augmentations = None
+
+        return pre_augmentations, post_augmentations
+
+class SpectrogramAugmentations(nn.Module):
+    '''Input  = (B, T, C) '''
+    '''Output = (B, T, C) '''
+    def __init__(self, cfg):
+        super().__init__()
+        self.augmentations = self.build_augmentations(cfg)
+
+    def build_augmentations(self, cfg):
+        augmentations = []
+
+        if (cfg.specaugment_p > 0.0):
+            
+            for i in range(cfg.time_masks):
+                augmentations.append(TimeMasking(time_mask_param=cfg.time_mask_size))
+
+            for i in range(cfg.freq_masks):
+                augmentations.append(FrequencyMasking(freq_mask_param=cfg.freq_mask_size))
+
         if augmentations != []:
-            augmentations = Compose(augmentations)
+            augmentations = nn.Sequential(*augmentations)
         else:
             augmentations = None
 
         return augmentations
+
+    def forward(self, x):
+        if self.augmentations:
+            x = rearrange(x, 'b t c -> b c t')
+            x = self.augmentations(x)
+            x = rearrange(x, 'b c t -> b t c')
+        return x
 
 class PadTrim(object):
     def __init__(self, max_len, fill_value=0, channels_first=True):

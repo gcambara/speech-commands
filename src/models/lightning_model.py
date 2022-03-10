@@ -6,6 +6,7 @@ from torch import nn
 import torch.nn.functional as F
 from torch.optim.lr_scheduler import StepLR
 import torchmetrics
+from ..datamodules.augmentations import SpectrogramAugmentations
 from ..modules.features import MelFilterbank, Mfcc
 from ..modules.classifiers import LeNet, PerceiverModel
 from vit_pytorch import ViT
@@ -47,6 +48,12 @@ class LightningModel(pl.LightningModule):
         self.hop_length = int(self.sr * cfg.hop_length)
         self.featurizer_post_norm = cfg.featurizer_post_norm
 
+        # Spectrogram augmentations
+        if cfg.featurizer != 'waveform':
+            self.spec_augments = SpectrogramAugmentations(cfg)
+        else:
+            self.spec_augments = None
+
         # Metrics
         self.log_model_params = cfg.log_model_params
         self.train_acc = torchmetrics.Accuracy()
@@ -71,6 +78,8 @@ class LightningModel(pl.LightningModule):
             x = self.wav_normalization(x)
         if self.featurizer:
             x = self.featurizer(x)
+        if self.spec_augments:
+            x = self.spec_augments(x)
         x = self.classifier(x)
         return x
 

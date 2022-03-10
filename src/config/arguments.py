@@ -75,7 +75,7 @@ def parse_arguments(stage='train'):
     parser.add_argument('--beta1', type=float, default=0.900, help='beta 1 for optimizer')
     parser.add_argument('--beta2', type=float, default=0.999, help='beta 1 for optimizer')
     parser.add_argument('--optimizer_eps', type=float, default=1e-08, help='epsilon for optimizer')
-    parser.add_argument('--weight_decay', type=float, default=0.0, help='weight decay for optimizer')
+    parser.add_argument('--weight_decay', type=float, default=0.1, help='weight decay for optimizer')
 
     # Logger options
     parser.add_argument('--tensorboard', dest='tensorboard', action='store_true', help='use tensorboard logger')
@@ -109,9 +109,14 @@ def parse_arguments(stage='train'):
     parser.add_argument('--resample_p', type=float, default=0.3, help='probability of applying resampling augment')
     parser.add_argument('--resample_min', type=float, default=0.85, help='minimum fraction of the original sampling rate')
     parser.add_argument('--resample_max', type=float, default=1.15, help='maximum fraction of the original sampling rate')
-    parser.add_argument('--background_noise_p', type=float, default=0.7, help='probability of applying background noises')
-    parser.add_argument('--background_snr_min', type=float, default=0.0, help='min SNR of the background noise')
-    parser.add_argument('--background_snr_max', type=float, default=15.0, help='max SNR of the background noise')
+    parser.add_argument('--background_noise_p', type=float, default=0.8, help='probability of applying background noises')
+    parser.add_argument('--background_snr_min', type=float, default=5.0, help='min SNR of the background noise')
+    parser.add_argument('--background_snr_max', type=float, default=30.0, help='max SNR of the background noise')
+    parser.add_argument('--specaugment_p', type=float, default=0.7, help='probability of applying specaugment')
+    parser.add_argument('--time_masks', type=int, default=2, help='number of time masks')
+    parser.add_argument('--time_mask_size', type=int, default=25, help='maximum size of the time mask')
+    parser.add_argument('--freq_masks', type=int, default=2, help='number of time masks')
+    parser.add_argument('--freq_mask_size', type=int, default=7, help='maximum size of the freq mask')
 
     args = parser.parse_args()
     if args.config != '':
