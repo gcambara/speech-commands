@@ -5,19 +5,28 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader
 from torchaudio.datasets import SPEECHCOMMANDS
+from .augmentations import PadTrim, WaveformAugmentations
 
 class SpeechCommands(SPEECHCOMMANDS):
-    def __init__(self, root, url, download, subset=None):
+    def __init__(self, cfg, root, url, download, subset=None):
         super().__init__(root, url=url, download=download, subset=subset)
+        self.augmentations = WaveformAugmentations(cfg)
+        self.pad_trim = PadTrim(max_len=cfg.chunk_size, fill_value=0.0, channels_first=True)
 
     def __getitem__(self, index):
         audio, sample_rate, label, speaker_id, utterance_number = super().__getitem__(index)
+
+        if self.augmentations:
+            audio = self.augmentations(audio)
+
+        audio = self.pad_trim(audio)
+
         return audio, sample_rate, label, speaker_id, utterance_number
 
 class SpeechCommandsDataModule(pl.LightningDataModule):
     def __init__(self, cfg):
         super().__init__()
-
+        self.cfg = cfg
         self.root = cfg.data
         if not os.path.isdir(self.root):
             os.makedirs(self.root)
@@ -36,12 +45,12 @@ class SpeechCommandsDataModule(pl.LightningDataModule):
         self.use_cuda = cfg.use_cuda
 
     def prepare_data(self):
-        SpeechCommands(self.root, url=self.url, download=True)
+        SpeechCommands(self.cfg, self.root, url=self.url, download=True)
 
     def setup(self, stage=None):
-        self.train_dataset = SpeechCommands(self.root, url=self.url, download=False, subset='training')
-        self.dev_dataset = SpeechCommands(self.root, url=self.url, download=False, subset='validation')
-        self.test_dataset = SpeechCommands(self.root, url=self.url, download=False, subset='testing')
+        self.train_dataset = SpeechCommands(self.cfg, self.root, url=self.url, download=False, subset='training')
+        self.dev_dataset = SpeechCommands(self.cfg, self.root, url=self.url, download=False, subset='validation')
+        self.test_dataset = SpeechCommands(self.cfg, self.root, url=self.url, download=False, subset='testing')
 
         if self.num_labels == 35:
             self.labels = sorted(['backward', 'bed', 'bird', 'cat', 'dog', 'down', 'eight', 'five', 'follow', 'forward', 'four', 'go', 'happy', 'house', 'learn', 'left', 'marvin', 'nine', 'no', 'off', 'on', 'one', 'right', 'seven', 'sheila', 'six', 'stop', 'three', 'tree', 'two', 'up', 'visual', 'wow', 'yes', 'zero'])

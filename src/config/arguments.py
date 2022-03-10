@@ -103,6 +103,13 @@ def parse_arguments(stage='train'):
     parser.add_argument('--prc_fourier_encode_data', type=int, default=1, help='boolean perceiver fourier encode data')
     parser.add_argument('--prc_self_per_cross_attn', type=int, default=1, help='perceiver self per cross attention')
 
+    # Data augmentation options
+    parser.add_argument('--time_shift_p', type=float, default=0.3, help='probability of appling time shift augment')
+    parser.add_argument('--time_shift_range', type=float, default=0.1, help='time shift range in seconds')
+    parser.add_argument('--resample_p', type=float, default=0.3, help='probability of appling resampling augment')
+    parser.add_argument('--resample_min', type=float, default=0.85, help='minimum fraction of the original sampling rate')
+    parser.add_argument('--resample_max', type=float, default=1.15, help='maximum fraction of the original sampling rate')
+
     args = parser.parse_args()
     if args.config != '':
         return yaml_to_args(args, stage)
