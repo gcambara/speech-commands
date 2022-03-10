@@ -64,10 +64,10 @@ def parse_arguments(stage='train'):
 
     # Training options
     parser.add_argument('--lr', type=float, default=0.001, help='initial learning rate')
-    parser.add_argument('--lr_scheduler', default='constant', help='learning rate scheduler, options: constant | step_lr')
-    parser.add_argument('--lr_gamma', type=float, default=0.5, help='multiplicative factor for the learning rate')
-    parser.add_argument('--lr_step_size', type=int, default=30, help='number of epochs to wait before applying gamma to the learning rate')
-    parser.add_argument('--max_epochs', type=int, default=150, help='maximum number of epochs for training')
+    parser.add_argument('--lr_scheduler', default='step_lr', help='learning rate scheduler, options: constant | step_lr')
+    parser.add_argument('--lr_gamma', type=float, default=0.9, help='multiplicative factor for the learning rate')
+    parser.add_argument('--lr_step_size', type=int, default=1, help='number of epochs to wait before applying gamma to the learning rate')
+    parser.add_argument('--max_epochs', type=int, default=50, help='maximum number of epochs for training')
     parser.add_argument('--overfit_batches', type=float, default=0.0, help='number of batches to overfit')
 
     # Optimizer option
