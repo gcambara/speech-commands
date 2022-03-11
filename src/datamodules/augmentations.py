@@ -1,4 +1,5 @@
 from einops import rearrange
+import random
 import torch
 from torch import nn
 from torchaudio.transforms import FrequencyMasking, TimeMasking
@@ -74,12 +75,12 @@ class SpectrogramAugmentations(nn.Module):
     def __init__(self, cfg):
         super().__init__()
         self.augmentations = self.build_augmentations(cfg)
+        self.specaugment_p = cfg.specaugment_p
 
     def build_augmentations(self, cfg):
         augmentations = []
 
         if (cfg.specaugment_p > 0.0):
-            
             for i in range(cfg.time_masks):
                 augmentations.append(TimeMasking(time_mask_param=cfg.time_mask_size))
 
@@ -94,7 +95,7 @@ class SpectrogramAugmentations(nn.Module):
         return augmentations
 
     def forward(self, x):
-        if self.augmentations:
+        if self.augmentations and (random.uniform(0, 1) < self.specaugment_p):
             x = rearrange(x, 'b t c -> b c t')
             x = self.augmentations(x)
             x = rearrange(x, 'b c t -> b t c')
