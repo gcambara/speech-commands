@@ -78,7 +78,7 @@ class LightningModel(pl.LightningModule):
             x = self.wav_normalization(x)
         if self.featurizer:
             x = self.featurizer(x)
-        if self.spec_augments:
+        if self.spec_augments and self.training:
             x = self.spec_augments(x)
         x = self.classifier(x)
         return x
