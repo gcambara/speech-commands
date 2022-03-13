@@ -49,7 +49,7 @@ def main():
     logger = [pl.loggers.TensorBoardLogger(save_dir=cfg.run_dir, name='tensorboard'),
               pl.loggers.CSVLogger(save_dir=cfg.run_dir, name='csv_logger')]
     lr_monitor = LearningRateMonitor(logging_interval='epoch')
-    checkpoint_callback = ModelCheckpoint(monitor='dev_acc', filename="{epoch}-{step}-{dev_acc:.3f}", save_last=True, save_top_k=1, mode='max')
+    checkpoint_callback = ModelCheckpoint(monitor='dev_acc', filename="{epoch}-{step}-{dev_acc:.3f}", save_last=True, save_top_k=10, mode='max')
 
     save_cfg(cfg, logger[0].log_dir)
 
