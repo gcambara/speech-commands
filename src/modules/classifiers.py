@@ -69,5 +69,4 @@ class PerceiverModel(nn.Module):
                                    self_per_cross_attn=cfg.prc_self_per_cross_attn)
 
     def forward(self, x):
-        x = self.perceiver(x)
-        return x
+        return self.perceiver(x)

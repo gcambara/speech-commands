@@ -120,6 +120,10 @@ def parse_arguments(stage='train'):
     parser.add_argument('--freq_masks', type=int, default=2, help='number of time masks')
     parser.add_argument('--freq_mask_size', type=int, default=7, help='maximum size of the freq mask')
 
+    # Performance measuring info
+    parser.add_argument('--warmup_fwd', type=int, default=10, help='number of forward warmups before start measuring time')
+    parser.add_argument('--n_fwd', type=int, default=100, help='number of forwards to measure time')
+
     args = parser.parse_args()
     if args.config != '':
         return yaml_to_args(args, stage)
