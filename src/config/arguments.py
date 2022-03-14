@@ -72,6 +72,10 @@ def parse_arguments(stage='train'):
     parser.add_argument('--max_epochs', type=int, default=50, help='maximum number of epochs for training')
     parser.add_argument('--overfit_batches', type=float, default=0.0, help='number of batches to overfit')
 
+    # Testing option
+    parser.add_argument('--ckpt', default='', help='path to the model file to load')
+    parser.add_argument('--cfg', default='', help='path to the config model file to load')
+
     # Optimizer option
     parser.add_argument('--optimizer', default='adamw', help='optimizer: adam | adamw')
     parser.add_argument('--beta1', type=float, default=0.900, help='beta 1 for optimizer')

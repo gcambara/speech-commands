@@ -82,11 +82,5 @@ def main():
     out_path = os.path.join(args.dst, f'avg_{args.n_ckpts}_ckpts.ckpt')
     torch.save(new_ckpt, out_path)
 
-    # new_state = average_checkpoints(args.inputs)
-    # with PathManager.open(args.output, "wb") as f:
-    #     torch.save(new_state, f)
-    # print("Finished writing averaged checkpoint to {}".format(args.output))
-
-
 if __name__ == "__main__":
     main()
