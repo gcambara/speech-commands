@@ -12,6 +12,11 @@ python train.py --data ./data --run_dir ./experiments/train --num_workers 32
 python train.py --data ./data --run_dir ./experiments/perceiver --num_workers 16 --num_labels 10 --max_epochs 1 --classifier perceiver
 ```
 
+Composite features can be used with:
+```
+python train.py --data ./data --run_dir ./experiments/perceiver --num_workers 16 --num_labels 10 --max_epochs 1 --classifier perceiver --featurizer log-mfsc,mfcc --prc_input_channels <log-mfsc dim + mfcc dim>
+```
+
 ## Testing
 A recommended step is to average the last N checkpoints (for instance, 10 checkpoints), with the following script:
 ```
