@@ -63,13 +63,13 @@ def parse_arguments(stage='train'):
     parser.add_argument('--loss', default='cross-entropy', help='loss to use: cross-entropy')
 
     # Training options
-    parser.add_argument('--lr', type=float, default=0.001, help='initial learning rate')
+    parser.add_argument('--lr', type=float, default=1e-4, help='initial learning rate')
     parser.add_argument('--lr_scheduler', default='step_lr', help='learning rate scheduler, options: constant | step_lr | cosine')
     parser.add_argument('--lr_gamma', type=float, default=0.9, help='multiplicative factor for the learning rate')
     parser.add_argument('--lr_step_size', type=int, default=1, help='number of epochs to wait before applying gamma to the learning rate')
-    parser.add_argument('--lr_min', type=float, default=1e-8, help='minimum learning rate for cosine scheduler')
-    parser.add_argument('--lr_max_epochs', type=int, default=100, help='final epoch for cosine scheduler')
-    parser.add_argument('--max_epochs', type=int, default=50, help='maximum number of epochs for training')
+    parser.add_argument('--lr_min', type=float, default=1e-6, help='minimum learning rate for cosine scheduler')
+    parser.add_argument('--lr_max_epochs', type=int, default=400, help='final epoch for cosine scheduler')
+    parser.add_argument('--max_epochs', type=int, default=400, help='maximum number of epochs for training')
     parser.add_argument('--overfit_batches', type=float, default=0.0, help='number of batches to overfit')
 
     # Testing option

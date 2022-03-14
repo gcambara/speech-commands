@@ -41,6 +41,7 @@ def main():
     else:
         plugins = None
 
+    model_cfg.data = cfg.data
     dm = SpeechCommandsDataModule(model_cfg)
     dm.prepare_data()
     dm.setup()
