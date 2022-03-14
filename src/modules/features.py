@@ -4,6 +4,58 @@ import torch
 from torch import nn
 from torchaudio.transforms import MelSpectrogram, MFCC
 
+class Featurizer(nn.Module):
+    '''Input  = (B, T, C) '''
+    '''Output = (B, T, C) '''
+    def __init__(self, cfg):
+        super().__init__()
+        # Feature extraction
+        self.n_fft = cfg.n_fft
+        self.n_mels = cfg.n_mels
+        self.n_mfcc = cfg.n_mfcc
+        self.deltas = cfg.deltas
+        self.sr = cfg.sampling_rate
+        self.win_length = int(self.sr * cfg.win_length)
+        self.hop_length = int(self.sr * cfg.hop_length)
+        self.featurizer_post_norm = cfg.featurizer_post_norm
+
+        self.featurizer = self.get_featurizer(cfg, cfg.featurizer)
+
+    def get_featurizer(self, cfg, featurizer_names):
+        featurizer_names = featurizer_names.split(',')
+        if len(featurizer_names) == 1:
+            featurizer_name = featurizer_names[0]
+            if featurizer_name == 'mfsc':
+                featurizer = MelFilterbank(sampling_rate=self.sr, n_fft=self.n_fft, n_mels=self.n_mels, win_length=self.win_length, hop_length=self.hop_length, window_fn=torch.hamming_window, apply_log=False, norm=self.featurizer_post_norm)
+            elif featurizer_name == 'log-mfsc':
+                featurizer = MelFilterbank(sampling_rate=self.sr, n_fft=self.n_fft, n_mels=self.n_mels, win_length=self.win_length, hop_length=self.hop_length, window_fn=torch.hamming_window, apply_log=True, norm=self.featurizer_post_norm)
+            elif featurizer_name == 'mfcc':
+                featurizer = Mfcc(sampling_rate=self.sr, n_fft=self.n_fft, n_mels=self.n_mels, n_mfcc=self.n_mfcc, win_length=self.win_length, hop_length=self.hop_length, window_fn=torch.hamming_window, apply_log=False, norm=self.featurizer_post_norm, deltas=self.deltas)
+            elif featurizer_name == 'log-mfcc':
+                featurizer = Mfcc(sampling_rate=self.sr, n_fft=self.n_fft, n_mels=self.n_mels, n_mfcc=self.n_mfcc, win_length=self.win_length, hop_length=self.hop_length, window_fn=torch.hamming_window, apply_log=True, norm=self.featurizer_post_norm, deltas=self.deltas)
+            elif featurizer_name == 'waveform':
+                featurizer = None
+            else:
+                raise NotImplementedError
+        else:
+            featurizers = []
+            for featurizer_name in featurizer_names:
+                featurizers.append(self.get_featurizer(cfg, featurizer_name))
+            featurizer = nn.ModuleList(featurizers)
+        return featurizer
+
+    def forward(self, x):
+        if isinstance(self.featurizer, nn.ModuleList):
+            out_feats = []
+            for featurizer in self.featurizer:
+                out_feat = featurizer(x)
+                out_feats.append(out_feat)
+            x = torch.cat(out_feats, dim=-1)
+        else:
+            x = self.featurizer(x)
+
+        return x
+
 class MelFilterbank(nn.Module):
     '''Input  = (B, T, C) '''
     '''Output = (B, T, C) '''

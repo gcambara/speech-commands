@@ -7,7 +7,7 @@ import torch.nn.functional as F
 from torch.optim.lr_scheduler import CosineAnnealingLR, StepLR
 import torchmetrics
 from ..datamodules.augmentations import SpectrogramAugmentations
-from ..modules.features import MelFilterbank, Mfcc
+from ..modules.features import Featurizer
 from ..modules.classifiers import LeNet, PerceiverModel
 from vit_pytorch import ViT
 
@@ -41,16 +41,6 @@ class LightningModel(pl.LightningModule):
         self.lr_max_epochs = cfg.lr_max_epochs
         self.max_epochs = cfg.max_epochs
 
-        # Feature extraction
-        self.n_fft = cfg.n_fft
-        self.n_mels = cfg.n_mels
-        self.n_mfcc = cfg.n_mfcc
-        self.deltas = cfg.deltas
-        self.sr = cfg.sampling_rate
-        self.win_length = int(self.sr * cfg.win_length)
-        self.hop_length = int(self.sr * cfg.hop_length)
-        self.featurizer_post_norm = cfg.featurizer_post_norm
-
         # Spectrogram augmentations
         if cfg.featurizer != 'waveform':
             self.spec_augments = SpectrogramAugmentations(cfg)
@@ -65,7 +55,10 @@ class LightningModel(pl.LightningModule):
 
         # Build models and losses
         self.wav_normalization = self.get_wav_normalization(cfg.wav_norm)
-        self.featurizer = self.get_featurizer(cfg.featurizer)
+        if cfg.featurizer != 'waveform':
+            self.featurizer = Featurizer(cfg)
+        else:
+            self.featurizer = None
         if self.featurizer:
             with torch.no_grad():
                 _, time_size, freq_size = self.featurizer(torch.randn(1, self.chunk_size, 1)).shape
@@ -113,22 +106,6 @@ class LightningModel(pl.LightningModule):
 
     def validation_epoch_end(self, outputs):
         self.log_avg_loss(outputs)
-
-    def get_featurizer(self, featurizer_name):
-        if featurizer_name == 'mfsc':
-            featurizer = MelFilterbank(sampling_rate=self.sr, n_fft=self.n_fft, n_mels=self.n_mels, win_length=self.win_length, hop_length=self.hop_length, window_fn=torch.hamming_window, apply_log=False, norm=self.featurizer_post_norm)
-        elif featurizer_name == 'log-mfsc':
-            featurizer = MelFilterbank(sampling_rate=self.sr, n_fft=self.n_fft, n_mels=self.n_mels, win_length=self.win_length, hop_length=self.hop_length, window_fn=torch.hamming_window, apply_log=True, norm=self.featurizer_post_norm)
-        elif featurizer_name == 'mfcc':
-            featurizer = Mfcc(sampling_rate=self.sr, n_fft=self.n_fft, n_mels=self.n_mels, n_mfcc=self.n_mfcc, win_length=self.win_length, hop_length=self.hop_length, window_fn=torch.hamming_window, apply_log=False, norm=self.featurizer_post_norm, deltas=self.deltas)
-        elif featurizer_name == 'log-mfcc':
-            featurizer = Mfcc(sampling_rate=self.sr, n_fft=self.n_fft, n_mels=self.n_mels, n_mfcc=self.n_mfcc, win_length=self.win_length, hop_length=self.hop_length, window_fn=torch.hamming_window, apply_log=True, norm=self.featurizer_post_norm, deltas=self.deltas)
-        elif featurizer_name == 'waveform':
-            featurizer = None
-        else:
-            raise NotImplementedError
-
-        return featurizer
 
     def get_classifier(self, classifier_name, time_size, freq_size):
         if classifier_name == 'lenet':
