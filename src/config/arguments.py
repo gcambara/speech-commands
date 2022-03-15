@@ -23,7 +23,7 @@ def parse_arguments(stage='train'):
     parser.set_defaults(ddp_find_unused_parameters=False)
 
     # Data loader options
-    parser.add_argument('--batch_size', type=int, default=128, help='training batch size')
+    parser.add_argument('--batch_size', type=int, default=192, help='training batch size')
     parser.add_argument('--batch_size_dev', type=int, default=128, help='development batch size')
     parser.add_argument('--batch_size_test', type=int, default=128, help='test batch size')
     parser.add_argument('--shuffle', dest='shuffle', action='store_true', help='shuffle train set at every epoch')
@@ -35,7 +35,7 @@ def parse_arguments(stage='train'):
     parser.add_argument('--shuffle_test', dest='shuffle_test', action='store_true', help='shuffle test set at every epoch')
     parser.add_argument('--no_shuffle_test', dest='shuffle_test', action='store_false', help='do not shuffle test set at every epoch')
     parser.set_defaults(shuffle_test=False)
-    parser.add_argument('--num_workers', type=int, default=0, help='how many subprocesses to use for data loading')
+    parser.add_argument('--num_workers', type=int, default=4, help='how many subprocesses to use for data loading')
     parser.add_argument('--limit_train_batches', type=float, default=1.0, help='only use this percentage of samples for training')
     parser.add_argument('--num_labels', type=int, default=35, help='how many labels to use with Speech Commands: 10 | 20 | 35')
 
@@ -61,6 +61,9 @@ def parse_arguments(stage='train'):
     parser.add_argument('--featurizer_post_norm', default='instancenorm2d', help='normalization to apply after feature extraction: instancenorm2d')
     parser.add_argument('--classifier', default='perceiver', help='architecture name for the model to be trained: lenet |perceiver')
     parser.add_argument('--loss', default='cross-entropy', help='loss to use: cross-entropy')
+    parser.add_argument('--label_smoothing', type=float, default=0.0, help='amount of smoothing for cross-entropy loss')
+    parser.add_argument('--class_weights', type=int, default=0, help='whether to use class weights at cross entropy loss or not')
+    parser.add_argument('--class_weights_batches', type=int, default=20, help='for how many batches to compute the class weights')
 
     # Training options
     parser.add_argument('--lr', type=float, default=1e-4, help='initial learning rate')

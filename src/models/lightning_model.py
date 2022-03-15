@@ -67,6 +67,11 @@ class LightningModel(pl.LightningModule):
 
         self.classifier = self.get_classifier(cfg.classifier, time_size, freq_size)
 
+        if hasattr(cfg, 'label_smoothing'):
+            self.label_smoothing = cfg.label_smoothing
+        else:
+            self.label_smoothing = 0.0
+        self.class_weights = cfg.class_weights
         self.loss = self.get_loss(cfg.loss)
 
     def forward(self, x):
@@ -129,7 +134,7 @@ class LightningModel(pl.LightningModule):
 
     def get_loss(self, loss_name):
         if loss_name == 'cross-entropy':
-            loss = nn.CrossEntropyLoss()
+            loss = nn.CrossEntropyLoss(weight=self.class_weights, label_smoothing=self.label_smoothing)
         return loss
 
     def get_optimizer(self, optimizer_name):

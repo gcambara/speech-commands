@@ -44,6 +44,11 @@ def main():
     dm.prepare_data()
     dm.setup()
 
+    if cfg.class_weights:
+        cfg.class_weights = dm.get_class_weights()
+    else:
+        cfg.class_weights = None
+
     model = LightningModel(cfg)
 
     logger = [pl.loggers.TensorBoardLogger(save_dir=cfg.run_dir, name='tensorboard'),

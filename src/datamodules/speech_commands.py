@@ -6,6 +6,7 @@ from torch import nn
 from torch.utils.data import DataLoader
 from torchaudio.datasets import SPEECHCOMMANDS
 from .augmentations import PadTrim, WaveformAugmentations
+from tqdm import tqdm
 
 class SpeechCommands(SPEECHCOMMANDS):
     def __init__(self, cfg, root, url, download, subset=None):
@@ -45,6 +46,9 @@ class SpeechCommandsDataModule(pl.LightningDataModule):
         self.shuffle_dev = cfg.shuffle_dev
         self.shuffle_test = cfg.shuffle_test
         self.use_cuda = cfg.use_cuda
+
+        self.class_weights = cfg.class_weights
+        self.class_weights_batches = cfg.class_weights_batches
 
     def prepare_data(self):
         SpeechCommands(self.cfg, self.root, url=self.url, download=True)
@@ -93,3 +97,19 @@ class SpeechCommandsDataModule(pl.LightningDataModule):
         # Return the word corresponding to the index in labels
         # This is the inverse of label_to_index
         return self.labels[index]
+
+    def get_class_weights(self):
+        weights = torch.zeros(len(self.labels))
+        n_samples = 0
+        print(f"Computing class weights for {self.class_weights_batches} batches...")
+        for i, (_, labels) in tqdm(enumerate(self.train_dataloader())):
+            for label in labels:
+                weights[label] += 1
+            n_samples += len(labels)
+
+            if i == self.class_weights_batches:
+                break
+
+        weights = n_samples / (len(self.labels) * weights)
+        return weights
+
