@@ -20,7 +20,10 @@ class SpeechCommands(SPEECHCOMMANDS):
         audio, sample_rate, label, speaker_id, utterance_number = super().__getitem__(index)
 
         if self.augmentations and self.subset == 'training':
-            audio = self.augmentations(audio)
+            audio, its_silence_sample = self.augmentations(audio)
+            
+            if its_silence_sample:
+                label = 'silence'
 
         audio = self.pad_trim(audio)
 
@@ -63,7 +66,7 @@ class SpeechCommandsDataModule(pl.LightningDataModule):
         elif self.num_labels == 20:
             self.labels = sorted(['unknown', 'yes', 'no', 'up', 'down', 'left', 'right', 'on', 'off', 'stop', 'go', 'zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'])
         elif self.num_labels == 10:
-            self.labels = sorted(['unknown', 'left', 'right', 'yes', 'no', 'up', 'down', 'on', 'off', 'stop', 'go'])
+            self.labels = sorted(['unknown', 'left', 'right', 'yes', 'no', 'up', 'down', 'on', 'off', 'stop', 'go', 'silence'])
 
     def train_dataloader(self):
         return DataLoader(self.train_dataset, batch_size=self.batch_size, shuffle=self.shuffle, num_workers=self.num_workers, collate_fn=self.collater, pin_memory=self.use_cuda)

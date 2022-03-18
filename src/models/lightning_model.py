@@ -22,7 +22,7 @@ class LightningModel(pl.LightningModule):
         # Input and output sizes
         self.num_labels = cfg.num_labels
         if self.num_labels == 20 or self.num_labels == 10:
-            self.num_labels += 1 # sum 'unknown' class
+            self.num_labels += 2 # sum 'unknown' and 'silence' class
         self.chunk_size = cfg.chunk_size
 
         # Optimizer options

@@ -14,25 +14,42 @@ class WaveformAugmentations(nn.Module):
         self.sampling_rate = cfg.sampling_rate
         self.pad_trim = PadTrim(max_len=cfg.chunk_size, fill_value=0.0, channels_first=True)
         self.pre_augmentations, self.post_augmentations = self.build_augmentations(cfg, background_noises_path)
+        if cfg.num_labels == 10:
+            self.only_noise_p = cfg.only_noise_p
+            self.only_noise_augmentation = AddBackgroundNoise(sounds_path=background_noises_path,
+                                                              min_absolute_rms_in_db=-15.0,
+                                                              max_absolute_rms_in_db=-0.1,
+                                                              noise_rms='absolute',
+                                                              p=1.0)
+        else:
+            self.only_noise_p = 0.0
 
     def forward(self, x):
-        if self.pre_augmentations:
-            x = rearrange(x, '1 t -> t')
+        its_silence_sample = False
+        if (self.only_noise_p > 0.0) and (random.uniform(0, 1) < self.only_noise_p):
+            x = torch.zeros(x.size(-1))
             x = x.numpy()
-            x = torch.Tensor(self.pre_augmentations(samples=x, sample_rate=self.sampling_rate))
+            x = torch.Tensor(self.only_noise_augmentation(samples=x, sample_rate=self.sampling_rate))
             x = rearrange(x, 't -> 1 t')
+            its_silence_sample = True
+        else:
+            if self.pre_augmentations:
+                x = rearrange(x, '1 t -> t')
+                x = x.numpy()
+                x = torch.Tensor(self.pre_augmentations(samples=x, sample_rate=self.sampling_rate))
+                x = rearrange(x, 't -> 1 t')
 
-            # Some augmentations like resample change the size of the waveform, refit it
-            if x.size(-1) != self.chunk_size:
-                x = self.pad_trim(x)
+                # Some augmentations like resample change the size of the waveform, refit it
+                if x.size(-1) != self.chunk_size:
+                    x = self.pad_trim(x)
 
-        if self.post_augmentations:
-            x = rearrange(x, '1 t -> t')
-            x = x.numpy()
-            x = torch.Tensor(self.post_augmentations(samples=x, sample_rate=self.sampling_rate))
-            x = rearrange(x, 't -> 1 t')
+            if self.post_augmentations:
+                x = rearrange(x, '1 t -> t')
+                x = x.numpy()
+                x = torch.Tensor(self.post_augmentations(samples=x, sample_rate=self.sampling_rate))
+                x = rearrange(x, 't -> 1 t')
 
-        return x
+        return x, its_silence_sample
 
     def build_augmentations(self, cfg, background_noises_path=None):
         pre_augmentations, post_augmentations = [], []
