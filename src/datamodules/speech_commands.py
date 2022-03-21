@@ -1,9 +1,10 @@
 from einops import rearrange
+import numpy as np
 import os
 import pytorch_lightning as pl
 import torch
 from torch import nn
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, WeightedRandomSampler
 from torchaudio.datasets import SPEECHCOMMANDS
 from .augmentations import PadTrim, WaveformAugmentations
 from tqdm import tqdm
@@ -53,6 +54,9 @@ class SpeechCommandsDataModule(pl.LightningDataModule):
         self.class_weights = cfg.class_weights
         self.class_weights_batches = cfg.class_weights_batches
 
+        self.weighted_sampler = cfg.weighted_sampler
+        self.weighted_sampler_unk_weight = cfg.weighted_sampler_unk_weight
+
     def prepare_data(self):
         SpeechCommands(self.cfg, self.root, url=self.url, download=True)
 
@@ -68,8 +72,19 @@ class SpeechCommandsDataModule(pl.LightningDataModule):
         elif self.num_labels == 10:
             self.labels = sorted(['unknown', 'left', 'right', 'yes', 'no', 'up', 'down', 'on', 'off', 'stop', 'go', 'silence'])
 
+        if self.class_weights or self.weighted_sampler:
+            self.class_weights, self.idx_sample = self.get_class_weights()
+        else:
+            self.class_weights, self.idx_sample = None, None
+
+        if self.weighted_sampler:
+            self.sampler = self.get_weighted_random_sampler()
+            self.shuffle = None
+        else:
+            self.sampler = None
+
     def train_dataloader(self):
-        return DataLoader(self.train_dataset, batch_size=self.batch_size, shuffle=self.shuffle, num_workers=self.num_workers, collate_fn=self.collater, pin_memory=self.use_cuda)
+        return DataLoader(self.train_dataset, batch_size=self.batch_size, shuffle=self.shuffle, sampler=self.sampler, num_workers=self.num_workers, collate_fn=self.collater, pin_memory=self.use_cuda)
 
     def val_dataloader(self):
         return DataLoader(self.dev_dataset, batch_size=self.batch_size_dev, drop_last=True, shuffle=self.shuffle_dev, num_workers=self.num_workers, collate_fn=self.collater, pin_memory=self.use_cuda)
@@ -102,17 +117,45 @@ class SpeechCommandsDataModule(pl.LightningDataModule):
         return self.labels[index]
 
     def get_class_weights(self):
-        weights = torch.zeros(len(self.labels))
-        n_samples = 0
-        print(f"Computing class weights for {self.class_weights_batches} batches...")
-        for i, (_, labels) in tqdm(enumerate(self.train_dataloader())):
-            for label in labels:
-                weights[label] += 1
-            n_samples += len(labels)
+        idx_sample = np.zeros(len(self.train_dataset))
+        if self.weighted_sampler:
+            train_loader = DataLoader(self.train_dataset, batch_size=self.batch_size, shuffle=None, num_workers=self.num_workers, collate_fn=self.collater, pin_memory=self.use_cuda)
+            weights = torch.ones(len(self.labels))
+            weights[self.label_to_index('unknown')] = self.weighted_sampler_unk_weight
+            counter = 0
+            for _, labels in tqdm(train_loader):
+                for label in labels:
+                    idx_sample[counter] = label
+                    counter += 1
+        else:
+            train_loader = DataLoader(self.train_dataset, batch_size=self.batch_size, shuffle=self.shuffle, num_workers=self.num_workers, collate_fn=self.collater, pin_memory=self.use_cuda)
+            weights = torch.zeros(len(self.labels))
 
-            if i == self.class_weights_batches:
-                break
+            n_samples = 0
+            print(f"Computing class weights for {self.class_weights_batches} batches...")
+            counter = 0
+            for i, (_, labels) in tqdm(enumerate(train_loader)):
+                for label in labels:
+                    weights[label] += 1
+                    idx_sample[counter] = label
+                    counter += 1
+                n_samples += len(labels)
 
-        weights = n_samples / (len(self.labels) * weights)
-        return weights
+                if i == self.class_weights_batches:
+                    break
+
+            weights = n_samples / (len(self.labels) * weights)
+
+        return weights, idx_sample
+
+    def get_weighted_random_sampler(self):
+        weights_sample = np.zeros(len(self.train_dataset))
+
+        for i in range(0, len(self.labels)):
+            weights_sample[np.where(self.idx_sample == i)] = self.class_weights[i]
+
+        assert (len(weights_sample) == len(self.train_dataset))
+
+        return WeightedRandomSampler(weights_sample, len(weights_sample), replacement=True)
+
 

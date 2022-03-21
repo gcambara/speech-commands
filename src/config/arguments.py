@@ -39,6 +39,8 @@ def parse_arguments(stage='train'):
     parser.add_argument('--limit_train_batches', type=float, default=1.0, help='only use this percentage of samples for training')
     parser.add_argument('--num_labels', type=int, default=35, help='how many labels to use with Speech Commands: 10 | 20 | 35')
     parser.add_argument('--only_noise_p', type=float, default=0.1, help='percentage of the samples in the batch that will be silence (only applicable to 10 labels case)')
+    parser.add_argument('--weighted_sampler', type=int, default=0, help='apply weighted sampler')
+    parser.add_argument('--weighted_sampler_unk_weight', type=float, default=0.01, help='apply weighted sampler fixed weight for unknown class')
 
     # Audio processing options
     parser.add_argument('--waveform', dest='waveform', action='store_true', help='set waveform as the audio input type')
