@@ -17,6 +17,7 @@ class Featurizer(nn.Module):
         self.sr = cfg.sampling_rate
         self.win_length = int(self.sr * cfg.win_length)
         self.hop_length = int(self.sr * cfg.hop_length)
+        self.chop_size = cfg.chop_size
         self.featurizer_post_norm = cfg.featurizer_post_norm
 
         self.featurizer = self.get_featurizer(cfg, cfg.featurizer)
@@ -35,6 +36,8 @@ class Featurizer(nn.Module):
                 featurizer = Mfcc(sampling_rate=self.sr, n_fft=self.n_fft, n_mels=self.n_mels, n_mfcc=self.n_mfcc, win_length=self.win_length, hop_length=self.hop_length, window_fn=torch.hamming_window, apply_log=True, norm=self.featurizer_post_norm, deltas=self.deltas)
             elif featurizer_name == 'waveform':
                 featurizer = None
+            elif featurizer_name == 'wavechops':
+                featurizer = WaveChops(chop_size=self.chop_size)
             else:
                 raise NotImplementedError
         else:
@@ -91,7 +94,7 @@ class MelFilterbank(nn.Module):
         return x
 
 class Mfcc(nn.Module):
-    '''Input  = (B, T, T) '''
+    '''Input  = (B, T, C) '''
     '''Output = (B, T, C) '''
     def __init__(self,
                  sampling_rate=16000,
@@ -143,3 +146,17 @@ def append_deltas(feat, deltas):
             delta = compute_deltas(delta)
         feat = torch.cat([feat, delta], dim=1)
     return feat
+
+class WaveChops(nn.Module):
+    '''Input  = (B, T, C) '''
+    '''Output = (B, T, C) '''
+    def __init__(self,
+                 chop_size=160
+                 ):
+        super().__init__()
+        self.chop_size = chop_size
+
+    def forward(self, x):
+        b, t, c = x.shape
+        x = x.view(b, int(t / self.chop_size), self.chop_size)
+        return x

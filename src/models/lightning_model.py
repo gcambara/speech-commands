@@ -8,8 +8,7 @@ from torch.optim.lr_scheduler import CosineAnnealingLR, StepLR
 import torchmetrics
 from ..datamodules.augmentations import SpectrogramAugmentations
 from ..modules.features import Featurizer
-from ..modules.classifiers import LeNet, PerceiverModel
-from vit_pytorch import ViT
+from ..modules.classifiers import LeNet, PerceiverModel, PerceiverWav2Vec2
 
 class LightningModel(pl.LightningModule):
     '''Base class for the Speech Commands Detection models'''
@@ -117,6 +116,8 @@ class LightningModel(pl.LightningModule):
             classifier = LeNet(self.num_labels, time_size, freq_size)
         elif classifier_name == 'perceiver':
             classifier = PerceiverModel(self.cfg, self.num_labels)
+        elif classifier_name == 'perceiver_w2v2':
+            classifier = PerceiverWav2Vec2(self.cfg, self.num_labels)
         else:
             raise NotImplementedError
 

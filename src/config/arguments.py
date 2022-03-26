@@ -57,18 +57,20 @@ def parse_arguments(stage='train'):
     parser.add_argument('--deltas', type=int, default=0, help='deltas to compute in feature extraction')
     parser.add_argument('--win_length', type=float, default=0.025, help='window length in seconds, for STFT computation')
     parser.add_argument('--hop_length', type=float, default=0.010, help='hop length in seconds, for STFT computation')
+    parser.add_argument('--chop_size', type=int, default=160, help='size of chops in wave chops')
 
     # Model options
     parser.add_argument('--wav_norm', default='layernorm', help='normalization to apply to waveforms: none | ')
-    parser.add_argument('--featurizer', default='log-mfsc', help='name of the featurizer to use: mfsc | log-mfsc | mfcc | log-mfcc | waveform')
+    parser.add_argument('--featurizer', default='log-mfsc', help='name of the featurizer to use: mfsc | log-mfsc | mfcc | log-mfcc | waveform | wavechops')
     parser.add_argument('--featurizer_post_norm', default='instancenorm2d', help='normalization to apply after feature extraction: instancenorm2d')
-    parser.add_argument('--classifier', default='perceiver', help='architecture name for the model to be trained: lenet |perceiver')
+    parser.add_argument('--classifier', default='perceiver', help='architecture name for the model to be trained: lenet | perceiver | perceiver_w2v2')
     parser.add_argument('--loss', default='cross-entropy', help='loss to use: cross-entropy')
     parser.add_argument('--label_smoothing', type=float, default=0.0, help='amount of smoothing for cross-entropy loss')
     parser.add_argument('--class_weights', type=int, default=0, help='whether to use class weights at cross entropy loss or not')
     parser.add_argument('--class_weights_batches', type=int, default=20, help='for how many batches to compute the class weights')
 
     # Training options
+    parser.add_argument('--model', default='base', help='type of model to train: base | distil')
     parser.add_argument('--lr', type=float, default=1e-4, help='initial learning rate')
     parser.add_argument('--lr_scheduler', default='step_lr', help='learning rate scheduler, options: constant | step_lr | cosine')
     parser.add_argument('--lr_gamma', type=float, default=0.9, help='multiplicative factor for the learning rate')
@@ -114,6 +116,15 @@ def parse_arguments(stage='train'):
     parser.add_argument('--prc_weight_tie_layers', type=int, default=1, help='boolean perceiver weight tie layers')
     parser.add_argument('--prc_fourier_encode_data', type=int, default=1, help='boolean perceiver fourier encode data')
     parser.add_argument('--prc_self_per_cross_attn', type=int, default=1, help='perceiver self per cross attention')
+
+    # Perceiver wav2vec2.0 options
+    parser.add_argument('--prc_freeze_latents', type=int, default=0, help='freezes perceiver latents since the beginning')
+    parser.add_argument('--latent_weight_norm', default='none', help='normalization for the wav2vec2.0 quantizer weights that are used as perceiver latents: none | kaiming')
+
+    # Distil model options
+    parser.add_argument('--teacher', default='facebook/wav2vec2-base', help='teacher model path or URL')
+    parser.add_argument('--teacher_zoo', default='huggingface', help='zoo to take the teacher from: huggingface | none')
+    parser.add_argument('--w2v2_target_state', type=int, default=-1, help='select the wav2vec2 hidden state that shall be used as teacher target, projected state will be used if set to -1')
 
     # Data augmentation options
     parser.add_argument('--time_shift_p', type=float, default=0.3, help='probability of applying time shift augment')

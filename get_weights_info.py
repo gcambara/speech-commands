@@ -1,4 +1,5 @@
 import os
+import pandas as pd
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 from pytorch_lightning.plugins import DDPPlugin
@@ -52,20 +53,20 @@ def main():
     elif cfg.model == 'distil':
         model = DistilModel(cfg)
 
-    logger = [pl.loggers.TensorBoardLogger(save_dir=cfg.run_dir, name='tensorboard'),
-              pl.loggers.CSVLogger(save_dir=cfg.run_dir, name='csv_logger')]
-    lr_monitor = LearningRateMonitor(logging_interval='epoch')
-    checkpoint_callback = ModelCheckpoint(monitor='dev_acc', filename="{epoch}-{step}-{dev_acc:.3f}", save_last=True, save_top_k=10, mode='max')
-    if cfg.weighted_sampler:
-        replace_sampler_ddp = False
-    else:
-        replace_sampler_ddp = True
+    info = []
+    for name, param in model.named_parameters():
+        shape = list(param.shape)
+        mean = param.mean().item()
+        std = param.std().item()
+        maximum = param.max().item()
+        minimum = param.min().item()
 
-    save_cfg(cfg, logger[0].log_dir)
+        info.append([name, shape, mean, std, maximum, minimum])
 
-    trainer = pl.Trainer(accelerator=cfg.accelerator, callbacks=[lr_monitor, checkpoint_callback], default_root_dir=cfg.run_dir, gpus=cfg.num_gpus, deterministic=False, limit_train_batches=cfg.limit_train_batches, logger=logger, max_epochs=cfg.max_epochs, overfit_batches=cfg.overfit_batches, plugins=plugins, precision=cfg.precision, profiler=None, replace_sampler_ddp=replace_sampler_ddp, resume_from_checkpoint=cfg.resume_from_ckpt, track_grad_norm=2)
-    trainer.fit(model, dm)
-    trainer.test(ckpt_path='best', test_dataloaders=dm.test_dataloader())
+    df = pd.DataFrame(info, columns =['name', 'shape', 'mean', 'std', 'max', 'min'])
+    out_path = os.path.join(cfg.run_dir, f'{cfg.classifier}_weights_info.tsv')
+    df.to_csv(out_path, sep='\t')
+
 
 if __name__ == '__main__':
     main()
