@@ -5,6 +5,12 @@ from torch import nn
 from perceiver_pytorch import Perceiver
 from transformers import Wav2Vec2ForPreTraining
 
+# class KWT(nn.Module):
+#     '''Input  = (B, T, C) '''
+#     '''Output = (B, T, C) '''
+#     def __init__(self, num_labels, time_size, freq_size):
+#         super().__init__()
+
 class LeNet(nn.Module):
     '''Input  = (B, T, C) '''
     '''Output = (B, T, C) '''
@@ -68,6 +74,9 @@ class PerceiverModel(nn.Module):
                                    weight_tie_layers=weight_tie_layers,
                                    fourier_encode_data=fourier_encode_data,
                                    self_per_cross_attn=cfg.prc_self_per_cross_attn)
+
+        if cfg.prc_freeze_latents:
+            self.perceiver.latents.requires_grad = False
 
     def forward(self, x):
         return self.perceiver(x)

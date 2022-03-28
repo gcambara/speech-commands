@@ -22,7 +22,7 @@ class SpeechCommands(SPEECHCOMMANDS):
 
         if self.augmentations and self.subset == 'training':
             audio, its_silence_sample = self.augmentations(audio)
-            
+
             if its_silence_sample:
                 label = 'silence'
 
