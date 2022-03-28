@@ -63,7 +63,7 @@ def parse_arguments(stage='train'):
     parser.add_argument('--wav_norm', default='layernorm', help='normalization to apply to waveforms: none | ')
     parser.add_argument('--featurizer', default='log-mfsc', help='name of the featurizer to use: mfsc | log-mfsc | mfcc | log-mfcc | waveform | wavechops')
     parser.add_argument('--featurizer_post_norm', default='instancenorm2d', help='normalization to apply after feature extraction: instancenorm2d')
-    parser.add_argument('--classifier', default='perceiver', help='architecture name for the model to be trained: lenet | perceiver | perceiver_w2v2')
+    parser.add_argument('--classifier', default='perceiver', help='architecture name for the model to be trained: kwt | lenet | perceiver | perceiver_w2v2')
     parser.add_argument('--loss', default='cross-entropy', help='loss to use: cross-entropy')
     parser.add_argument('--label_smoothing', type=float, default=0.0, help='amount of smoothing for cross-entropy loss')
     parser.add_argument('--class_weights', type=int, default=0, help='whether to use class weights at cross entropy loss or not')
@@ -120,6 +120,18 @@ def parse_arguments(stage='train'):
     # Perceiver wav2vec2.0 options
     parser.add_argument('--prc_freeze_latents', type=int, default=0, help='freezes perceiver latents since the beginning')
     parser.add_argument('--latent_weight_norm', default='none', help='normalization for the wav2vec2.0 quantizer weights that are used as perceiver latents: none | kaiming')
+
+    # KWT options
+    parser.add_argument('--kwt_depth', type=int, default=12, help='KWT depth')
+    parser.add_argument('--kwt_dim', type=int, default=64, help='KWT dim')
+    parser.add_argument('--kwt_heads', type=int, default=1, help='KWT heads')
+    parser.add_argument('--kwt_mlp_dim', type=int, default=256, help='KWT heads')
+    parser.add_argument('--kwt_dropout', type=float, default=0.0, help='KWT dropout')
+    parser.add_argument('--kwt_dim_head', type=int, default=64, help='KWT head dimension')
+    parser.add_argument('--kwt_patch_x', type=int, default=1, help='KWT x patch dim')
+    parser.add_argument('--kwt_patch_y', type=int, default=40, help='KWT y patch dim')
+    parser.add_argument('--kwt_channels', type=int, default=1, help='KWT channels')
+    parser.add_argument('--kwt_pool', default='cls', help='KWT pool')
 
     # Distil model options
     parser.add_argument('--teacher', default='facebook/wav2vec2-base', help='teacher model path or URL')

@@ -1,15 +1,53 @@
-from einops import rearrange
+from einops import rearrange, repeat
 import numpy as np
 import torch
 from torch import nn
 from perceiver_pytorch import Perceiver
 from transformers import Wav2Vec2ForPreTraining
+from .layers import PostNormTransformer
 
-# class KWT(nn.Module):
-#     '''Input  = (B, T, C) '''
-#     '''Output = (B, T, C) '''
-#     def __init__(self, num_labels, time_size, freq_size):
-#         super().__init__()
+class KWT(nn.Module):
+    '''Input  = (B, T, C) '''
+    '''Output = (B, T, C) '''
+    def __init__(self, cfg, num_labels, time_size, freq_size):
+        super().__init__()
+        img_x, img_y = time_size, freq_size
+
+        assert img_x % cfg.kwt_patch_x == 0, 'Image dimensions must be divisible by the patch size.'
+        assert img_y % cfg.kwt_patch_y == 0, 'Image dimensions must be divisible by the patch size.'
+        num_patches = (img_x // cfg.kwt_patch_x) * (img_y // cfg.kwt_patch_y)
+        patch_dim = cfg.kwt_channels * cfg.kwt_patch_x * cfg.kwt_patch_y
+
+        assert cfg.kwt_pool in {'cls', 'mean'}, 'pool type must be either cls (cls token) or mean (mean pooling)'
+
+        self.transformer = PostNormTransformer(dim=cfg.kwt_dim,
+                                               depth=cfg.kwt_depth,
+                                               heads=cfg.kwt_heads,
+                                               dim_head=cfg.kwt_dim_head,
+                                               mlp_dim=cfg.kwt_mlp_dim,
+                                               dropout=cfg.kwt_dropout)
+
+        self.lin_proj = nn.Linear(img_y, cfg.kwt_dim)
+
+        self.g_feature = nn.Parameter(torch.randn(1, 1, cfg.kwt_dim))
+        self.pos_embedding = nn.Parameter(torch.randn(1, num_patches + 1, cfg.kwt_dim))
+
+        self.pool = cfg.kwt_pool
+        self.mlp_head = nn.Linear(cfg.kwt_dim, num_labels)
+
+    def forward(self, img):
+        x = self.lin_proj(img)
+        b, T, _ = x.shape
+
+        g_features = repeat(self.g_feature, '() n d -> b n d', b = b)
+        x = torch.cat((g_features, x), dim=1)
+        x = x + self.pos_embedding
+
+        x = self.transformer(x)
+
+        x = x.mean(dim = 1) if self.pool == 'mean' else x[:, 0]
+
+        return self.mlp_head(x)
 
 class LeNet(nn.Module):
     '''Input  = (B, T, C) '''
