@@ -77,6 +77,7 @@ def parse_arguments(stage='train'):
     parser.add_argument('--lr_step_size', type=int, default=1, help='number of epochs to wait before applying gamma to the learning rate')
     parser.add_argument('--lr_min', type=float, default=1e-6, help='minimum learning rate for cosine scheduler')
     parser.add_argument('--lr_max_epochs', type=int, default=400, help='final epoch for cosine scheduler')
+    parser.add_argument('--lr_warmup_epochs', type=int, default=0, help='number of epochs to perform warmup with')
     parser.add_argument('--max_epochs', type=int, default=400, help='maximum number of epochs for training')
     parser.add_argument('--overfit_batches', type=float, default=0.0, help='number of batches to overfit')
 

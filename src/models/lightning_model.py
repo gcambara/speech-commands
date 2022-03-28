@@ -5,6 +5,7 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 from torch.optim.lr_scheduler import CosineAnnealingLR, StepLR
+from pl_bolts.optimizers.lr_scheduler import LinearWarmupCosineAnnealingLR
 import torchmetrics
 from ..datamodules.augmentations import SpectrogramAugmentations
 from ..modules.features import Featurizer
@@ -38,6 +39,7 @@ class LightningModel(pl.LightningModule):
         self.lr_step_size = cfg.lr_step_size
         self.lr_min = cfg.lr_min
         self.lr_max_epochs = cfg.lr_max_epochs
+        self.lr_warmup_epochs = cfg.lr_warmup_epochs
         self.max_epochs = cfg.max_epochs
 
         # Spectrogram augmentations
@@ -174,7 +176,13 @@ class LightningModel(pl.LightningModule):
             scheduler = StepLR(optimizer, step_size=self.lr_step_size, gamma=self.lr_gamma)
             return [optimizer], [scheduler]
         elif self.lr_scheduler == 'cosine':
-            scheduler = CosineAnnealingLR(optimizer, T_max=self.lr_max_epochs, eta_min=self.lr_min)
+            if self.lr_warmup_epochs > 0:
+                 scheduler = LinearWarmupCosineAnnealingLR(optimizer,
+                                                        warmup_epochs=self.lr_warmup_epochs,
+                                                        max_epochs=self.lr_max_epochs,
+                                                        eta_min=self.lr_min)
+            else:
+                scheduler = CosineAnnealingLR(optimizer, T_max=self.lr_max_epochs, eta_min=self.lr_min)
             return [optimizer], [scheduler]
         else:
             print(f"Warning! Unrecognized learning rate scheduler {self.lr_scheduler}. Training will be done without a scheduler.")
