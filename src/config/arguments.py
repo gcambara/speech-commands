@@ -120,7 +120,7 @@ def parse_arguments(stage='train'):
 
     # Perceiver wav2vec2.0 options
     parser.add_argument('--prc_freeze_latents', type=int, default=0, help='freezes perceiver latents since the beginning')
-    parser.add_argument('--latent_weight_norm', default='none', help='normalization for the wav2vec2.0 quantizer weights that are used as perceiver latents: none | kaiming')
+    parser.add_argument('--latent_weight_norm', default='kaiming', help='normalization for the wav2vec2.0 quantizer weights that are used as perceiver latents: none | kaiming')
 
     # KWT options
     parser.add_argument('--kwt_depth', type=int, default=12, help='KWT depth')
