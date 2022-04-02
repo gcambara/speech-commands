@@ -1,7 +1,9 @@
 from einops import rearrange, repeat
+from einops.layers.torch import Reduce
 import numpy as np
 import torch
 from torch import nn
+import torch.nn.functional as F
 from perceiver_pytorch import Perceiver
 from transformers import Wav2Vec2ForPreTraining
 from .layers import PostNormTransformer
@@ -154,7 +156,10 @@ class PerceiverWav2Vec2(nn.Module):
 
         wav2vec2 = Wav2Vec2ForPreTraining.from_pretrained(cfg.teacher)
         wav2vec2_codevector = wav2vec2.quantizer.codevectors.squeeze()
-
+        # wav2vec2_codevector = self.process_latents(wav2vec2_codevector,
+        #                                            int(cfg.prc_num_latents),
+        #                                            int(cfg.prc_latent_dim),
+        #                                            cfg.latent_process_mode)
         self.perceiver.latents = nn.Parameter(wav2vec2_codevector)
 
         if cfg.latent_weight_norm != 'none':
@@ -174,3 +179,170 @@ class PerceiverWav2Vec2(nn.Module):
             b = -a
             weights = a + (((weights - weights.min())*(b - a))/(weights.max() - weights.min()))
         return nn.Parameter(weights)
+
+    def process_latents(self, latents, num_latents, latent_dim, mode='none'):
+        src_num, src_dim = latents.shape
+
+        if src_num == num_latents and src_dim == latent_dim:
+            pass
+        else:
+            num_factor = src_num // num_latents
+            dim_factor = src_dim // latent_dim
+
+            if mode == 'avg_pool':
+                if num_factor > 1:
+                    latents = rearrange(latents, 'n d -> 1 d n')
+                    latents = F.avg_pool1d(latents,
+                                           kernel_size=num_factor,
+                                           stride=num_factor)
+                    latents = rearrange(latents, '1 d n -> n d')
+                if dim_factor > 1:
+                    latents = rearrange(latents, 'n d -> 1 n d')
+                    latents = F.avg_pool1d(latents,
+                                           kernel_size=dim_factor,
+                                           stride=dim_factor)
+                    latents = rearrange(latents, '1 n d -> n d')
+            elif mode == 'random_sample':
+                if src_num != num_latents:
+                    perm = torch.randperm(src_num)
+                    idx = perm[:num_latents]
+                    latents = latents[idx]
+                if src_dim != latent_dim:
+                    perm = torch.randperm(src_dim)
+                    idx = perm[:latent_dim]
+                    latents = latents[idx]
+            elif mode == 'pile_up':
+                if num_factor > 1:
+                    latents = latents.view(num_latents, src_dim * num_factor)
+
+        return latents
+
+class MultiPerceiverWav2Vec2(nn.Module):
+    ''' Multi block Perceiver. At least set the number of layers with --prc_depth 2,2,2.
+        If other arguments are not specified, they will be repeated along the number of total blocks.'''
+    '''Input  = (B, T, C) '''
+    '''Output = (B, T, C) '''
+    def __init__(self, cfg, num_labels):
+        super().__init__()
+        self.latent_weight_norm = cfg.latent_weight_norm
+        self.prc_freeze_latents = cfg.prc_freeze_latents
+        self.multi_perceiver, latent_dim = self.build_multi_perceiver(cfg, num_labels)
+
+        if cfg.teacher != 'none':
+            wav2vec2 = Wav2Vec2ForPreTraining.from_pretrained(cfg.teacher)
+            wav2vec2_codevector = wav2vec2.quantizer.codevectors.squeeze()
+            self.process_latents(wav2vec2_codevector,
+                                 int(cfg.prc_num_latents),
+                                 int(cfg.prc_latent_dim),
+                                 cfg.latent_process_mode)
+
+        self.to_logits = nn.Sequential(
+                                        Reduce('b n d -> b d', 'mean'),
+                                        nn.LayerNorm(latent_dim),
+                                        nn.Linear(latent_dim, num_labels)
+                                     )
+
+    def forward(self, x):
+        latents = []
+        for perce in self.multi_perceiver:
+            latent = perce(x)
+            latents.append(latent)
+
+        x = torch.cat(latents, dim=1)
+        return self.to_logits(x)
+
+    def build_multi_perceiver(self, cfg, num_labels):
+        multi_perceiver_args = [cfg.prc_input_channels,
+                                cfg.prc_input_axis,
+                                cfg.prc_num_freq_bands,
+                                cfg.prc_max_freq,
+                                cfg.prc_depth,
+                                cfg.prc_num_latents,
+                                cfg.prc_latent_dim,
+                                cfg.prc_cross_heads,
+                                cfg.prc_latent_heads,
+                                cfg.prc_cross_dim_head,
+                                cfg.prc_latent_dim_head,
+                                num_labels,
+                                cfg.prc_attn_dropout,
+                                cfg.prc_ff_dropout,
+                                cfg.prc_weight_tie_layers,
+                                cfg.prc_fourier_encode_data,
+                                cfg.prc_self_per_cross_attn]
+
+        layers = str(cfg.prc_depth).split(',')
+        n_blocks = len(layers)
+
+        new_args = []
+        for arg in multi_perceiver_args:
+            arg_list = str(arg).split(',')
+            if len(arg_list) == n_blocks:
+                pass
+            elif len(arg_list) == 1:
+                arg_list = [arg] * n_blocks
+            else:
+                raise NotImplementedError(f"Error! Argument size {arg} does not match with the number of expected blocks {n_blocks}")
+
+            new_args.append(arg_list)
+
+        blocks = []
+        for i in range(n_blocks):
+            if int(new_args[14][i]):
+                weight_tie_layers = True
+            else:
+                weight_tie_layers = False
+
+            if int(new_args[15][i]):
+                fourier_encode_data = True
+            else:
+                fourier_encode_data = False
+
+            perceiver_block = Perceiver(input_channels=int(new_args[0][i]),
+                                        input_axis=int(new_args[1][i]),
+                                        num_freq_bands=int(new_args[2][i]),
+                                        max_freq=float(new_args[3][i]),
+                                        depth=int(new_args[4][i]),
+                                        num_latents=int(new_args[5][i]),
+                                        latent_dim=int(new_args[6][i]),
+                                        cross_heads=int(new_args[7][i]),
+                                        latent_heads=int(new_args[8][i]),
+                                        cross_dim_head=int(new_args[9][i]),
+                                        latent_dim_head=int(new_args[10][i]),
+                                        num_classes=int(new_args[11][i]),
+                                        attn_dropout=float(new_args[12][i]),
+                                        ff_dropout=float(new_args[13][i]),
+                                        weight_tie_layers=weight_tie_layers,
+                                        fourier_encode_data=fourier_encode_data,
+                                        self_per_cross_attn=int(new_args[16][i]),
+                                        final_classifier_head=False)
+            blocks.append(perceiver_block)
+        multi_perceiver = nn.Sequential(*blocks)
+
+        last_latent_dim = int(new_args[6][-1])
+        return multi_perceiver, last_latent_dim
+
+    def normalize_weights(self, weights, norm_type):
+        if norm_type == 'kaiming': # min-max normalization, so values are between (-sqrt(1/k), sqrt(1/k))
+            latent_dim = weights.size(-1)
+
+            a = np.sqrt(1 / latent_dim)
+            b = -a
+            weights = a + (((weights - weights.min())*(b - a))/(weights.max() - weights.min()))
+        return nn.Parameter(weights)
+
+    def process_latents(self, latents, num_latents, latent_dim, mode='none'):
+        src_num, src_dim = latents.shape
+
+        # gcambara: for now, simply divide the latents by the number of blocks
+        n_blocks = len(self.multi_perceiver)
+        assert src_num / num_latents == n_blocks, f"Error! Latents from wav2vec2.0 divided by num_latents should be equal to the number of blocks. # w2v2 latents = {src_num} | # latents = {num_latents} | n_blocks = {n_blocks}"
+
+        for i in range(n_blocks):
+            sub_latents = latents[i*num_latents:(i + 1)*num_latents]
+            self.multi_perceiver[i].latents = nn.Parameter(sub_latents)
+
+            if self.latent_weight_norm != 'none':
+                self.multi_perceiver[i].latents = self.normalize_weights(self.multi_perceiver[i].latents, self.latent_weight_norm)
+
+            if self.prc_freeze_latents:
+                self.multi_perceiver[i].latents.requires_grad = False

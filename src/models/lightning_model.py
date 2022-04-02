@@ -9,7 +9,7 @@ from pl_bolts.optimizers.lr_scheduler import LinearWarmupCosineAnnealingLR
 import torchmetrics
 from ..datamodules.augmentations import SpectrogramAugmentations
 from ..modules.features import Featurizer
-from ..modules.classifiers import KWT, LeNet, PerceiverModel, PerceiverWav2Vec2
+from ..modules.classifiers import KWT, LeNet, MultiPerceiverWav2Vec2, PerceiverModel, PerceiverWav2Vec2
 
 class LightningModel(pl.LightningModule):
     '''Base class for the Speech Commands Detection models'''
@@ -120,6 +120,8 @@ class LightningModel(pl.LightningModule):
             classifier = PerceiverModel(self.cfg, self.num_labels)
         elif classifier_name == 'perceiver_w2v2':
             classifier = PerceiverWav2Vec2(self.cfg, self.num_labels)
+        elif classifier_name == 'multi_perceiver_w2v2':
+            classifier = MultiPerceiverWav2Vec2(self.cfg, self.num_labels)
         elif classifier_name == 'kwt':
             classifier = KWT(self.cfg, self.num_labels, time_size, freq_size)
         else:

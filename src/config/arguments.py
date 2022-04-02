@@ -101,26 +101,27 @@ def parse_arguments(stage='train'):
     parser.set_defaults(log_model_params=False)
 
     # Perceiver options
-    parser.add_argument('--prc_input_channels', type=int, default=64, help='perceiver input channels')
-    parser.add_argument('--prc_input_axis', type=int, default=1, help='perceiver input axis')
-    parser.add_argument('--prc_num_freq_bands', type=int, default=12, help='perceiver num freq bands')
-    parser.add_argument('--prc_max_freq', type=float, default=10., help='perceiver max freq')
-    parser.add_argument('--prc_depth', type=int, default=6, help='perceiver depth')
-    parser.add_argument('--prc_num_latents', type=int, default=128, help='perceiver num latents')
-    parser.add_argument('--prc_latent_dim', type=int, default=256, help='perceiver latent dim')
-    parser.add_argument('--prc_cross_heads', type=int, default=1, help='perceiver cross_heads')
-    parser.add_argument('--prc_latent_heads', type=int, default=8, help='perceiver latent heads')
-    parser.add_argument('--prc_cross_dim_head', type=int, default=64, help='perceiver cross dim head')
-    parser.add_argument('--prc_latent_dim_head', type=int, default=64, help='perceiver latent dim head')
-    parser.add_argument('--prc_attn_dropout', type=float, default=0.0, help='perceiver attention dropout')
-    parser.add_argument('--prc_ff_dropout', type=float, default=0.0, help='perceiver feedforward dropout')
-    parser.add_argument('--prc_weight_tie_layers', type=int, default=1, help='boolean perceiver weight tie layers')
-    parser.add_argument('--prc_fourier_encode_data', type=int, default=1, help='boolean perceiver fourier encode data')
-    parser.add_argument('--prc_self_per_cross_attn', type=int, default=1, help='perceiver self per cross attention')
+    parser.add_argument('--prc_input_channels', default=64, help='perceiver input channels')
+    parser.add_argument('--prc_input_axis', default=1, help='perceiver input axis')
+    parser.add_argument('--prc_num_freq_bands', default=12, help='perceiver num freq bands')
+    parser.add_argument('--prc_max_freq', default=10., help='perceiver max freq')
+    parser.add_argument('--prc_depth', default=6, help='perceiver depth')
+    parser.add_argument('--prc_num_latents', default=128, help='perceiver num latents')
+    parser.add_argument('--prc_latent_dim', default=256, help='perceiver latent dim')
+    parser.add_argument('--prc_cross_heads', default=1, help='perceiver cross_heads')
+    parser.add_argument('--prc_latent_heads', default=8, help='perceiver latent heads')
+    parser.add_argument('--prc_cross_dim_head', default=64, help='perceiver cross dim head')
+    parser.add_argument('--prc_latent_dim_head', default=64, help='perceiver latent dim head')
+    parser.add_argument('--prc_attn_dropout', default=0.0, help='perceiver attention dropout')
+    parser.add_argument('--prc_ff_dropout',  default=0.0, help='perceiver feedforward dropout')
+    parser.add_argument('--prc_weight_tie_layers', default=1, help='boolean perceiver weight tie layers')
+    parser.add_argument('--prc_fourier_encode_data', default=1, help='boolean perceiver fourier encode data')
+    parser.add_argument('--prc_self_per_cross_attn', default=1, help='perceiver self per cross attention')
 
     # Perceiver wav2vec2.0 options
     parser.add_argument('--prc_freeze_latents', type=int, default=0, help='freezes perceiver latents since the beginning')
     parser.add_argument('--latent_weight_norm', default='kaiming', help='normalization for the wav2vec2.0 quantizer weights that are used as perceiver latents: none | kaiming')
+    parser.add_argument('--latent_process_mode', default='none', help='mode to process the latents: none | avg_pool | random_sample | pile_up')
 
     # KWT options
     parser.add_argument('--kwt_depth', type=int, default=12, help='KWT depth')
@@ -135,7 +136,7 @@ def parse_arguments(stage='train'):
     parser.add_argument('--kwt_pool', default='cls', help='KWT pool')
 
     # Distil model options
-    parser.add_argument('--teacher', default='facebook/wav2vec2-base', help='teacher model path or URL')
+    parser.add_argument('--teacher', default='facebook/wav2vec2-base', help='teacher model path or URL, set to none to skip it')
     parser.add_argument('--teacher_zoo', default='huggingface', help='zoo to take the teacher from: huggingface | none')
     parser.add_argument('--w2v2_target_state', type=int, default=-1, help='select the wav2vec2 hidden state that shall be used as teacher target, projected state will be used if set to -1')
 
