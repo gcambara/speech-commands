@@ -1,6 +1,9 @@
 '''Base class for the Speech Commands Detection models.'''
 
+import matplotlib.pyplot as plt
+import pandas as pd
 import pytorch_lightning as pl
+import seaborn as sn
 import torch
 from torch import nn
 import torch.nn.functional as F
@@ -102,6 +105,7 @@ class LightningModel(pl.LightningModule):
         loss, preds, targets = self._shared_step(batch, batch_idx)
         self.valid_acc(preds, targets)
         self.log('dev_acc', self.valid_acc, on_step=False, on_epoch=True)
+        self.log('dev_acc', self.valid_acc, on_step=False, on_epoch=True)
         return {'loss': loss, 'preds': preds.detach(), 'targets': targets.detach()}
 
     def test_step(self, batch, batch_idx):
@@ -112,6 +116,37 @@ class LightningModel(pl.LightningModule):
 
     def validation_epoch_end(self, outputs):
         self.log_avg_loss(outputs)
+        self.log_confusion_matrix(outputs)
+
+    def log_confusion_matrix(self, outputs):
+        all_preds, all_targets = [], []
+        for index, batch_output in enumerate(outputs):
+            batch_preds = batch_output['preds']
+            pred_ids = torch.argmax(batch_preds, dim=-1)
+            target_ids = batch_output['targets']
+
+            all_preds.append(pred_ids)
+            all_targets.append(target_ids)
+
+        all_preds = torch.cat(all_preds, dim=0)
+        all_targets = torch.cat(all_targets, dim=0)
+
+        get_confusion_matrix = torchmetrics.ConfusionMatrix(self.num_labels,
+                                                            normalize='true').to(self.device)
+        confusion_matrix = get_confusion_matrix(all_preds, all_targets)
+
+        labels = self.trainer.datamodule.labels
+
+        df_confusion_matrix = pd.DataFrame(confusion_matrix.cpu().numpy(),
+                                           index=[i for i in labels],
+                                           columns = [i for i in labels])
+
+        plt.figure(figsize = (12,7))
+        fig = sn.heatmap(df_confusion_matrix).get_figure()
+        plt.tight_layout()
+        #plt.savefig('output.png')
+        self.logger[0].experiment.add_figure('dev_conf_matrix', fig, self.current_epoch)
+        plt.clf()
 
     def get_classifier(self, classifier_name, time_size, freq_size):
         if classifier_name == 'lenet':
