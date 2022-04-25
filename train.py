@@ -63,7 +63,7 @@ def main():
 
     save_cfg(cfg, logger[0].log_dir)
 
-    trainer = pl.Trainer(accelerator=cfg.accelerator, callbacks=[lr_monitor, checkpoint_callback], default_root_dir=cfg.run_dir, gpus=cfg.num_gpus, deterministic=False, limit_train_batches=cfg.limit_train_batches, logger=logger, max_epochs=cfg.max_epochs, overfit_batches=cfg.overfit_batches, plugins=plugins, precision=cfg.precision, profiler=None, replace_sampler_ddp=replace_sampler_ddp, resume_from_checkpoint=cfg.resume_from_ckpt, track_grad_norm=2)
+    trainer = pl.Trainer(accelerator=cfg.accelerator, accumulate_grad_batches=cfg.grad_accum, callbacks=[lr_monitor, checkpoint_callback], default_root_dir=cfg.run_dir, gpus=cfg.num_gpus, deterministic=False, limit_train_batches=cfg.limit_train_batches, logger=logger, max_epochs=cfg.max_epochs, overfit_batches=cfg.overfit_batches, plugins=plugins, precision=cfg.precision, profiler=None, replace_sampler_ddp=replace_sampler_ddp, resume_from_checkpoint=cfg.resume_from_ckpt, track_grad_norm=2)
     trainer.fit(model, dm)
     trainer.test(ckpt_path='best', test_dataloaders=dm.test_dataloader())
 

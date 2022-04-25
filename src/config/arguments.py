@@ -26,6 +26,7 @@ def parse_arguments(stage='train'):
     parser.add_argument('--batch_size', type=int, default=192, help='training batch size')
     parser.add_argument('--batch_size_dev', type=int, default=128, help='development batch size')
     parser.add_argument('--batch_size_test', type=int, default=128, help='test batch size')
+    parser.add_argument('--grad_accum', type=int, default=1, help='gradient accumulation')
     parser.add_argument('--shuffle', dest='shuffle', action='store_true', help='shuffle train set at every epoch')
     parser.add_argument('--no_shuffle', dest='shuffle', action='store_false', help='do not shuffle train set at every epoch')
     parser.set_defaults(shuffle=True)
