@@ -144,7 +144,6 @@ class LightningModel(pl.LightningModule):
         plt.figure(figsize = (12,7))
         fig = sn.heatmap(df_confusion_matrix).get_figure()
         plt.tight_layout()
-        #plt.savefig('output.png')
         self.logger[0].experiment.add_figure('dev_conf_matrix', fig, self.current_epoch)
         plt.clf()
 

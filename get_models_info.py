@@ -386,6 +386,70 @@ def test_perceiver_base_latents_640_dim_128(args):
     info = [name] + get_model_info(cfg, model, name=name)
     return info
 
+def test_perceiver_base_latents_640_dim_128_layers_8(args):
+    name = 'perceiver_base_latents_640_dim_128_layers_8'
+
+    cfg = copy.deepcopy(args)
+    cfg.featurizer = 'log-mfsc'
+    cfg.n_mels = 64
+    cfg.win_length = 0.025
+    cfg.hop_length = 0.010
+
+    cfg.classifier = 'perceiver'
+    cfg.prc_input_channels = cfg.n_mels
+    cfg.prc_input_axis = 1
+    cfg.prc_num_freq_bands = 12
+    cfg.prc_max_freq = 10.
+    cfg.prc_depth = 8
+    cfg.prc_num_latents = 640
+    cfg.prc_latent_dim = 128
+    cfg.prc_cross_heads = 1
+    cfg.prc_latent_heads = 8
+    cfg.prc_cross_dim_head = 64
+    cfg.prc_latent_dim_head = 64
+    cfg.prc_attn_dropout = 0.0
+    cfg.prc_ff_dropout = 0.0
+    cfg.prc_weight_tie_layers = 1
+    cfg.prc_fourier_encode_data = 1
+    cfg.prc_self_per_cross_attn = 1
+
+    model = LightningModel(cfg)
+
+    info = [name] + get_model_info(cfg, model, name=name)
+    return info
+
+def test_perceiver_base_latents_640_dim_128_heads_32(args):
+    name = 'perceiver_base_latents_640_dim_128_heads_32'
+
+    cfg = copy.deepcopy(args)
+    cfg.featurizer = 'log-mfsc'
+    cfg.n_mels = 64
+    cfg.win_length = 0.025
+    cfg.hop_length = 0.010
+
+    cfg.classifier = 'perceiver'
+    cfg.prc_input_channels = cfg.n_mels
+    cfg.prc_input_axis = 1
+    cfg.prc_num_freq_bands = 12
+    cfg.prc_max_freq = 10.
+    cfg.prc_depth = 6
+    cfg.prc_num_latents = 640
+    cfg.prc_latent_dim = 128
+    cfg.prc_cross_heads = 1
+    cfg.prc_latent_heads = 8
+    cfg.prc_cross_dim_head = 32
+    cfg.prc_latent_dim_head = 32
+    cfg.prc_attn_dropout = 0.0
+    cfg.prc_ff_dropout = 0.0
+    cfg.prc_weight_tie_layers = 1
+    cfg.prc_fourier_encode_data = 1
+    cfg.prc_self_per_cross_attn = 1
+
+    model = LightningModel(cfg)
+
+    info = [name] + get_model_info(cfg, model, name=name)
+    return info
+
 def test_perceiver_base_latents_320_dim_256(args):
     name = 'perceiver_base_latents_320_dim_256'
 
@@ -593,6 +657,38 @@ def test_perceiver_w2v2_base(args):
     cfg.prc_num_freq_bands = 12
     cfg.prc_max_freq = 10.
     cfg.prc_depth = 6
+    cfg.prc_num_latents = 640
+    cfg.prc_latent_dim = 128
+    cfg.prc_cross_heads = 1
+    cfg.prc_latent_heads = 8
+    cfg.prc_cross_dim_head = 32
+    cfg.prc_latent_dim_head = 32
+    cfg.prc_attn_dropout = 0.0
+    cfg.prc_ff_dropout = 0.0
+    cfg.prc_weight_tie_layers = 1
+    cfg.prc_fourier_encode_data = 1
+    cfg.prc_self_per_cross_attn = 1
+
+    model = LightningModel(cfg)
+
+    info = [name] + get_model_info(cfg, model, name=name)
+    return info
+
+def test_perceiver_w2v2_base_layers_8(args):
+    name = 'perceiver_w2v2_base_layers_8'
+
+    cfg = copy.deepcopy(args)
+    cfg.featurizer = 'log-mfsc'
+    cfg.n_mels = 64
+    cfg.win_length = 0.025
+    cfg.hop_length = 0.010
+
+    cfg.classifier = 'perceiver_w2v2'
+    cfg.prc_input_channels = cfg.n_mels
+    cfg.prc_input_axis = 1
+    cfg.prc_num_freq_bands = 12
+    cfg.prc_max_freq = 10.
+    cfg.prc_depth = 8
     cfg.prc_num_latents = 640
     cfg.prc_latent_dim = 128
     cfg.prc_cross_heads = 1
@@ -940,6 +1036,39 @@ def test_multi_perceiver_w2v2_latents_160_layers_2(args):
     info = [name] + get_model_info(cfg, model, name=name)
     return info
 
+def test_multi_perceiver_w2v2_latents_160_layers_6(args):
+    name = 'multi_perceiver_w2v2_latents_160_layers_6'
+
+    cfg = copy.deepcopy(args)
+    cfg.featurizer = 'log-mfsc'
+    cfg.n_mels = 64
+    cfg.win_length = 0.025
+    cfg.hop_length = 0.010
+
+    cfg.classifier = 'multi_perceiver_w2v2'
+    cfg.prc_input_channels = cfg.n_mels
+    cfg.prc_input_axis = 1
+    cfg.prc_num_freq_bands = 12
+    cfg.prc_max_freq = 10.
+    cfg.prc_depth = '1,1,2,2'
+    cfg.prc_num_latents = 160
+    cfg.prc_latent_dim = 128
+    cfg.prc_cross_heads = 1
+    cfg.prc_latent_heads = 8
+    cfg.prc_cross_dim_head = 32
+    cfg.prc_latent_dim_head = 32
+    cfg.prc_attn_dropout = 0.0
+    cfg.prc_ff_dropout = 0.0
+    cfg.prc_weight_tie_layers = 1
+    cfg.prc_fourier_encode_data = 1
+    cfg.prc_self_per_cross_attn = 1
+    cfg.latent_process_mode = 'avg_pool'
+
+    model = LightningModel(cfg)
+
+    info = [name] + get_model_info(cfg, model, name=name)
+    return info
+
 def main():
     cfg = parse_arguments(stage='train')
     print(cfg)
@@ -970,16 +1099,18 @@ def main():
     df_info.append(test_kwt1(cfg))
     df_info.append(test_kwt2(cfg))
     df_info.append(test_kwt3(cfg))
-    df_info.append(test_multi_perceiver_w2v2_latents_40(cfg))
-    df_info.append(test_multi_perceiver_w2v2_latents_80(cfg))
-    df_info.append(test_multi_perceiver_w2v2_latents_160(cfg))
-    df_info.append(test_multi_perceiver_w2v2_latents_160_layers_2(cfg))
+    # df_info.append(test_multi_perceiver_w2v2_latents_40(cfg))
+    # df_info.append(test_multi_perceiver_w2v2_latents_80(cfg))
+    # df_info.append(test_multi_perceiver_w2v2_latents_160(cfg))
+    # df_info.append(test_multi_perceiver_w2v2_latents_160_layers_2(cfg))
+    # df_info.append(test_multi_perceiver_w2v2_latents_160_layers_6(cfg))
     # df_info.append(test_perceiver_w2v2_base_latents_80_dim_128_layers_6(cfg))
     # df_info.append(test_perceiver_w2v2_base_latents_80_dim_128_layers_8(cfg))
     # df_info.append(test_perceiver_w2v2_base_latents_80_dim_128_layers_10(cfg))
     # df_info.append(test_perceiver_w2v2_base_latents_80_dim_128_layers_12(cfg))
     # df_info.append(test_perceiver_base_latents_320_dim_256_layers_3(cfg))
-    # df_info.append(test_perceiver_base_latents_640_dim_128(cfg))
+    df_info.append(test_perceiver_base_latents_640_dim_128(cfg))
+    df_info.append(test_perceiver_base_latents_640_dim_128_layers_8(cfg))
     # df_info.append(test_perceiver_base_latents_320_dim_256(cfg))
     # df_info.append(test_perceiver_base_latents_160_dim_512(cfg))
     # df_info.append(test_perceiver_base_latents_80_dim_1024(cfg))
@@ -992,6 +1123,7 @@ def main():
     # df_info.append(test_perceiver_base_latents_64(cfg))
     # df_info.append(test_perceiver_base_latents_64_dim_128(cfg))
     df_info.append(test_perceiver_w2v2_base(cfg))
+    df_info.append(test_perceiver_w2v2_base_layers_8(cfg))
     # df_info.append(test_perceiver_w2v2_base_latents_160_dim_512(cfg))
     # df_info.append(test_perceiver_w2v2_base_latents_160_dim_128(cfg))
 

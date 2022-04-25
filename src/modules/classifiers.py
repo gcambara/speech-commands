@@ -136,30 +136,26 @@ class PerceiverWav2Vec2(nn.Module):
         else:
             fourier_encode_data = False
 
-        self.perceiver = Perceiver(input_channels=cfg.prc_input_channels,
-                                   input_axis=cfg.prc_input_axis,
-                                   num_freq_bands=cfg.prc_num_freq_bands,
-                                   max_freq=cfg.prc_max_freq,
-                                   depth=cfg.prc_depth,
-                                   num_latents=cfg.prc_num_latents,
-                                   latent_dim=cfg.prc_latent_dim,
-                                   cross_heads=cfg.prc_cross_heads,
-                                   latent_heads=cfg.prc_latent_heads,
-                                   cross_dim_head=cfg.prc_cross_dim_head,
-                                   latent_dim_head=cfg.prc_latent_dim_head,
+        self.perceiver = Perceiver(input_channels=int(cfg.prc_input_channels),
+                                   input_axis=int(cfg.prc_input_axis),
+                                   num_freq_bands=int(cfg.prc_num_freq_bands),
+                                   max_freq=float(cfg.prc_max_freq),
+                                   depth=int(cfg.prc_depth),
+                                   num_latents=int(cfg.prc_num_latents),
+                                   latent_dim=int(cfg.prc_latent_dim),
+                                   cross_heads=int(cfg.prc_cross_heads),
+                                   latent_heads=int(cfg.prc_latent_heads),
+                                   cross_dim_head=int(cfg.prc_cross_dim_head),
+                                   latent_dim_head=int(cfg.prc_latent_dim_head),
                                    num_classes=num_labels,
-                                   attn_dropout=cfg.prc_attn_dropout,
-                                   ff_dropout=cfg.prc_ff_dropout,
+                                   attn_dropout=float(cfg.prc_attn_dropout),
+                                   ff_dropout=float(cfg.prc_ff_dropout),
                                    weight_tie_layers=weight_tie_layers,
                                    fourier_encode_data=fourier_encode_data,
-                                   self_per_cross_attn=cfg.prc_self_per_cross_attn)
+                                   self_per_cross_attn=int(cfg.prc_self_per_cross_attn))
 
         wav2vec2 = Wav2Vec2ForPreTraining.from_pretrained(cfg.teacher)
         wav2vec2_codevector = wav2vec2.quantizer.codevectors.squeeze()
-        # wav2vec2_codevector = self.process_latents(wav2vec2_codevector,
-        #                                            int(cfg.prc_num_latents),
-        #                                            int(cfg.prc_latent_dim),
-        #                                            cfg.latent_process_mode)
         self.perceiver.latents = nn.Parameter(wav2vec2_codevector)
 
         if cfg.latent_weight_norm != 'none':
@@ -168,7 +164,17 @@ class PerceiverWav2Vec2(nn.Module):
         if cfg.prc_freeze_latents:
             self.perceiver.latents.requires_grad = False
 
+        if cfg.use_w2v2_latents:
+           self.latent_extractor = wav2vec2.wav2vec2.feature_extractor
+           self.latent_extractor._freeze_parameters()
+        else:
+           self.latent_extractor = None
+
     def forward(self, x):
+        if self.latent_extractor:
+            x = rearrange(x, 'b t 1 -> b t')
+            x = self.latent_extractor(x)
+            x = rearrange(x, 'b c t -> b t c')
         return self.perceiver(x)
 
     def normalize_weights(self, weights, norm_type):
