@@ -1,0 +1,46 @@
+train:
+  # Storage
+  data: ./data
+  run_dir: recipes/perceiver/wa2vec2_latents/results/baseline_vs_w2v2_base
+
+  # Task
+  num_labels: 35
+
+  # Training
+  batch_size: 32
+  batch_size_dev: 32
+  batch_size_test: 32
+  max_epochs: 1
+  num_workers: 16
+
+  # Optimizer
+  lr: 0.0001
+  lr_min: 0.000001
+  lr_max_epochs: 400
+  lr_scheduler: cosine
+  lr_warmup_epochs: 0
+  weight_decay: 0.1
+
+  # Feature extraction
+  featurizer: log-mfsc
+  n_mels: 64
+
+  # Model
+  prc_num_latents: 640
+  prc_latent_dim: 128
+  latent_weight_norm: kaiming
+
+  prc_input_channels: 64
+  prc_input_axis: 1
+  prc_num_freq_bands: 12
+  prc_max_freq: 10.0
+  prc_depth: 6
+  prc_cross_heads: 1
+  prc_latent_heads: 8
+  prc_cross_dim_head: 64
+  prc_latent_dim_head: 64
+  prc_attn_dropout: 0.0
+  prc_ff_dropout: 0.0
+  prc_weight_tie_layers: 1
+  prc_fourier_encode_data: 1
+  prc_self_per_cross_attn: 1
