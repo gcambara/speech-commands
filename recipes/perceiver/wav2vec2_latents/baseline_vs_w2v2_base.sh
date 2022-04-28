@@ -1,7 +1,7 @@
 #!/bin/bash
 CFG=recipes/perceiver/wav2vec2_latents/baseline_vs_w2v2_base.yaml
 GPU=0
-SAVE_DIR=recipes/perceiver/wa2vec2_latents/results/baseline_vs_w2v2_base
+SAVE_DIR=recipes/perceiver/wav2vec2_latents/results/baseline_vs_w2v2_base
 export CUDA_VISIBLE_DEVICES=$GPU
 cd ../../../
 

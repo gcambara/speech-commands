@@ -1,6 +1,8 @@
+from collections import Counter
 from einops import rearrange, repeat
 from einops.layers.torch import Reduce
 import numpy as np
+from sklearn.cluster import KMeans
 import torch
 from torch import nn
 import torch.nn.functional as F
@@ -97,23 +99,23 @@ class PerceiverModel(nn.Module):
         else:
             fourier_encode_data = False
 
-        self.perceiver = Perceiver(input_channels=cfg.prc_input_channels,
-                                   input_axis=cfg.prc_input_axis,
-                                   num_freq_bands=cfg.prc_num_freq_bands,
-                                   max_freq=cfg.prc_max_freq,
-                                   depth=cfg.prc_depth,
-                                   num_latents=cfg.prc_num_latents,
-                                   latent_dim=cfg.prc_latent_dim,
-                                   cross_heads=cfg.prc_cross_heads,
-                                   latent_heads=cfg.prc_latent_heads,
-                                   cross_dim_head=cfg.prc_cross_dim_head,
-                                   latent_dim_head=cfg.prc_latent_dim_head,
+        self.perceiver = Perceiver(input_channels=int(cfg.prc_input_channels),
+                                   input_axis=int(cfg.prc_input_axis),
+                                   num_freq_bands=int(cfg.prc_num_freq_bands),
+                                   max_freq=float(cfg.prc_max_freq),
+                                   depth=int(cfg.prc_depth),
+                                   num_latents=int(cfg.prc_num_latents),
+                                   latent_dim=int(cfg.prc_latent_dim),
+                                   cross_heads=int(cfg.prc_cross_heads),
+                                   latent_heads=int(cfg.prc_latent_heads),
+                                   cross_dim_head=int(cfg.prc_cross_dim_head),
+                                   latent_dim_head=int(cfg.prc_latent_dim_head),
                                    num_classes=num_labels,
-                                   attn_dropout=cfg.prc_attn_dropout,
-                                   ff_dropout=cfg.prc_ff_dropout,
+                                   attn_dropout=float(cfg.prc_attn_dropout),
+                                   ff_dropout=float(cfg.prc_ff_dropout),
                                    weight_tie_layers=weight_tie_layers,
                                    fourier_encode_data=fourier_encode_data,
-                                   self_per_cross_attn=cfg.prc_self_per_cross_attn)
+                                   self_per_cross_attn=int(cfg.prc_self_per_cross_attn))
 
         if cfg.prc_freeze_latents:
             self.perceiver.latents.requires_grad = False
@@ -156,6 +158,11 @@ class PerceiverWav2Vec2(nn.Module):
 
         wav2vec2 = Wav2Vec2ForPreTraining.from_pretrained(cfg.teacher)
         wav2vec2_codevector = wav2vec2.quantizer.codevectors.squeeze()
+
+        if cfg.clusterize_latents:
+            wav2vec2_codevector = self.clusterize_latents(wav2vec2_codevector,
+                                                          cfg.prc_num_latents)
+
         self.perceiver.latents = nn.Parameter(wav2vec2_codevector)
 
         if cfg.latent_weight_norm != 'none':
@@ -222,6 +229,17 @@ class PerceiverWav2Vec2(nn.Module):
                     latents = latents.view(num_latents, src_dim * num_factor)
 
         return latents
+
+    def clusterize_latents(self, latents, n_clusters):
+        kmeans = KMeans(n_clusters=n_clusters, random_state=0).fit(latents.detach().numpy())
+        label_counts = Counter(kmeans.labels_)
+        new_latents = torch.zeros(n_clusters, latents.size(-1))
+
+        for index, label in enumerate(kmeans.labels_):
+            count = label_counts[label]
+            new_latents[label, :] += latents[index, :] / count
+
+        return new_latents
 
 class MultiPerceiverWav2Vec2(nn.Module):
     ''' Multi block Perceiver. At least set the number of layers with --prc_depth 2,2,2.
