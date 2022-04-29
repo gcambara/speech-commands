@@ -151,11 +151,11 @@ class LightningModel(pl.LightningModule):
         if classifier_name == 'lenet':
             classifier = LeNet(self.num_labels, time_size, freq_size)
         elif classifier_name == 'perceiver':
-            classifier = PerceiverModel(self.cfg, self.num_labels)
+            classifier = PerceiverModel(self.cfg, self.num_labels, feat_size=freq_size)
         elif classifier_name == 'perceiver_w2v2':
-            classifier = PerceiverWav2Vec2(self.cfg, self.num_labels)
+            classifier = PerceiverWav2Vec2(self.cfg, self.num_labels, feat_size=freq_size)
         elif classifier_name == 'multi_perceiver_w2v2':
-            classifier = MultiPerceiverWav2Vec2(self.cfg, self.num_labels)
+            classifier = MultiPerceiverWav2Vec2(self.cfg, self.num_labels, feat_size=freq_size)
         elif classifier_name == 'kwt':
             classifier = KWT(self.cfg, self.num_labels, time_size, freq_size)
         else:

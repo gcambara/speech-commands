@@ -87,7 +87,7 @@ class LeNet(nn.Module):
 class PerceiverModel(nn.Module):
     '''Input  = (B, T, C) '''
     '''Output = (B, T, C) '''
-    def __init__(self, cfg, num_labels):
+    def __init__(self, cfg, num_labels, feat_size):
         super().__init__()
         if cfg.prc_weight_tie_layers:
             weight_tie_layers = True
@@ -98,6 +98,11 @@ class PerceiverModel(nn.Module):
             fourier_encode_data = True
         else:
             fourier_encode_data = False
+
+        if feat_size != int(cfg.prc_input_channels):
+            self.feat_proj = nn.Linear(feat_size, int(cfg.prc_input_channels))
+        else:
+            self.feat_proj = None
 
         self.perceiver = Perceiver(input_channels=int(cfg.prc_input_channels),
                                    input_axis=int(cfg.prc_input_axis),
@@ -121,12 +126,14 @@ class PerceiverModel(nn.Module):
             self.perceiver.latents.requires_grad = False
 
     def forward(self, x):
+        if self.feat_proj:
+            x = self.feat_proj(x)
         return self.perceiver(x)
 
 class PerceiverWav2Vec2(nn.Module):
     '''Input  = (B, T, C) '''
     '''Output = (B, T, C) '''
-    def __init__(self, cfg, num_labels):
+    def __init__(self, cfg, num_labels, feat_size):
         super().__init__()
         if cfg.prc_weight_tie_layers:
             weight_tie_layers = True
@@ -137,6 +144,11 @@ class PerceiverWav2Vec2(nn.Module):
             fourier_encode_data = True
         else:
             fourier_encode_data = False
+
+        if feat_size != int(cfg.prc_input_channels):
+            self.feat_proj = nn.Linear(feat_size, int(cfg.prc_input_channels))
+        else:
+            self.feat_proj = None
 
         self.perceiver = Perceiver(input_channels=int(cfg.prc_input_channels),
                                    input_axis=int(cfg.prc_input_axis),
@@ -182,6 +194,8 @@ class PerceiverWav2Vec2(nn.Module):
             x = rearrange(x, 'b t 1 -> b t')
             x = self.latent_extractor(x)
             x = rearrange(x, 'b c t -> b t c')
+        elif self.feat_proj:
+            x = self.feat_proj(x)
         return self.perceiver(x)
 
     def normalize_weights(self, weights, norm_type):
@@ -246,11 +260,16 @@ class MultiPerceiverWav2Vec2(nn.Module):
         If other arguments are not specified, they will be repeated along the number of total blocks.'''
     '''Input  = (B, T, C) '''
     '''Output = (B, T, C) '''
-    def __init__(self, cfg, num_labels):
+    def __init__(self, cfg, num_labels, feat_size):
         super().__init__()
         self.latent_weight_norm = cfg.latent_weight_norm
         self.prc_freeze_latents = cfg.prc_freeze_latents
         self.multi_perceiver, latent_dim = self.build_multi_perceiver(cfg, num_labels)
+
+        if feat_size != int(cfg.prc_input_channels):
+            self.feat_proj = nn.Linear(feat_size, int(cfg.prc_input_channels))
+        else:
+            self.feat_proj = None
 
         if cfg.teacher != 'none':
             wav2vec2 = Wav2Vec2ForPreTraining.from_pretrained(cfg.teacher)
@@ -267,6 +286,9 @@ class MultiPerceiverWav2Vec2(nn.Module):
                                      )
 
     def forward(self, x):
+        if self.feat_proj:
+            x = self.feat_proj(x)
+
         latents = []
         for perce in self.multi_perceiver:
             latent = perce(x)
