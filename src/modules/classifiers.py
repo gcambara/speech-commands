@@ -173,7 +173,7 @@ class PerceiverWav2Vec2(nn.Module):
 
         if cfg.clusterize_latents:
             wav2vec2_codevector = self.clusterize_latents(wav2vec2_codevector,
-                                                          cfg.prc_num_latents)
+                                                          int(cfg.prc_num_latents))
 
         self.perceiver.latents = nn.Parameter(wav2vec2_codevector)
 
