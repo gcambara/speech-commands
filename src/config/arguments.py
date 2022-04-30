@@ -118,6 +118,7 @@ def parse_arguments(stage='train'):
     parser.add_argument('--prc_weight_tie_layers', default=1, help='boolean perceiver weight tie layers')
     parser.add_argument('--prc_fourier_encode_data', default=1, help='boolean perceiver fourier encode data')
     parser.add_argument('--prc_self_per_cross_attn', default=1, help='perceiver self per cross attention')
+    parser.add_argument('--prc_classification', default='mean', help='perceiver classification mode: mean | cls')
 
     # Perceiver wav2vec2.0 options
     parser.add_argument('--prc_freeze_latents', type=int, default=0, help='freezes perceiver latents since the beginning')

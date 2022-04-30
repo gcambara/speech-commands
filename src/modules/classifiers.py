@@ -104,6 +104,12 @@ class PerceiverModel(nn.Module):
         else:
             self.feat_proj = None
 
+        self.class_mode = cfg.prc_classification
+        if self.class_mode == 'mean':
+            final_classifier_head = True
+        else:
+            final_classifier_head = False
+
         self.perceiver = Perceiver(input_channels=int(cfg.prc_input_channels),
                                    input_axis=int(cfg.prc_input_axis),
                                    num_freq_bands=int(cfg.prc_num_freq_bands),
@@ -120,7 +126,14 @@ class PerceiverModel(nn.Module):
                                    ff_dropout=float(cfg.prc_ff_dropout),
                                    weight_tie_layers=weight_tie_layers,
                                    fourier_encode_data=fourier_encode_data,
-                                   self_per_cross_attn=int(cfg.prc_self_per_cross_attn))
+                                   self_per_cross_attn=int(cfg.prc_self_per_cross_attn),
+                                   final_classifier_head=final_classifier_head)
+
+        if self.class_mode == 'cls':
+            cls_token = nn.Parameter(torch.randn(1, int(cfg.prc_latent_dim)))
+            self.perceiver.latents = nn.Parameter(torch.cat((cls_token, self.perceiver.latents), dim=0))
+            self.class_head = nn.Sequential(nn.LayerNorm(int(cfg.prc_latent_dim)),
+                                            nn.Linear(int(cfg.prc_latent_dim), num_labels))
 
         if cfg.prc_freeze_latents:
             self.perceiver.latents.requires_grad = False
@@ -128,7 +141,14 @@ class PerceiverModel(nn.Module):
     def forward(self, x):
         if self.feat_proj:
             x = self.feat_proj(x)
-        return self.perceiver(x)
+
+        if self.class_mode == 'mean':
+            x = self.perceiver(x)
+        elif self.class_mode == 'cls':
+            x = self.perceiver(x)
+            x = self.class_head(x[:, 0, :])
+
+        return x
 
 class PerceiverWav2Vec2(nn.Module):
     '''Input  = (B, T, C) '''
@@ -150,6 +170,12 @@ class PerceiverWav2Vec2(nn.Module):
         else:
             self.feat_proj = None
 
+        self.class_mode = cfg.prc_classification
+        if self.class_mode == 'mean':
+            final_classifier_head = True
+        else:
+            final_classifier_head = False
+
         self.perceiver = Perceiver(input_channels=int(cfg.prc_input_channels),
                                    input_axis=int(cfg.prc_input_axis),
                                    num_freq_bands=int(cfg.prc_num_freq_bands),
@@ -166,7 +192,8 @@ class PerceiverWav2Vec2(nn.Module):
                                    ff_dropout=float(cfg.prc_ff_dropout),
                                    weight_tie_layers=weight_tie_layers,
                                    fourier_encode_data=fourier_encode_data,
-                                   self_per_cross_attn=int(cfg.prc_self_per_cross_attn))
+                                   self_per_cross_attn=int(cfg.prc_self_per_cross_attn),
+                                   final_classifier_head=final_classifier_head)
 
         wav2vec2 = Wav2Vec2ForPreTraining.from_pretrained(cfg.teacher)
         wav2vec2_codevector = wav2vec2.quantizer.codevectors.squeeze()
@@ -176,6 +203,12 @@ class PerceiverWav2Vec2(nn.Module):
                                                           int(cfg.prc_num_latents))
 
         self.perceiver.latents = nn.Parameter(wav2vec2_codevector)
+
+        if self.class_mode == 'cls':
+            cls_token = nn.Parameter(torch.randn(1, int(cfg.prc_latent_dim)))
+            self.perceiver.latents = nn.Parameter(torch.cat((cls_token, self.perceiver.latents), dim=0))
+            self.class_head = nn.Sequential(nn.LayerNorm(int(cfg.prc_latent_dim)),
+                                            nn.Linear(int(cfg.prc_latent_dim), num_labels))
 
         if cfg.latent_weight_norm != 'none':
             self.perceiver.latents = self.normalize_weights(self.perceiver.latents, cfg.latent_weight_norm)
@@ -196,7 +229,14 @@ class PerceiverWav2Vec2(nn.Module):
             x = rearrange(x, 'b c t -> b t c')
         elif self.feat_proj:
             x = self.feat_proj(x)
-        return self.perceiver(x)
+
+        if self.class_mode == 'mean':
+            x = self.perceiver(x)
+        elif self.class_mode == 'cls':
+            x = self.perceiver(x)
+            x = self.class_head(x[:, 0, :])
+
+        return x
 
     def normalize_weights(self, weights, norm_type):
         if norm_type == 'kaiming': # min-max normalization, so values are between (-sqrt(1/k), sqrt(1/k))
@@ -279,11 +319,20 @@ class MultiPerceiverWav2Vec2(nn.Module):
                                  int(cfg.prc_latent_dim),
                                  cfg.latent_process_mode)
 
-        self.to_logits = nn.Sequential(
-                                        Reduce('b n d -> b d', 'mean'),
-                                        nn.LayerNorm(latent_dim),
-                                        nn.Linear(latent_dim, num_labels)
-                                     )
+        self.class_mode = cfg.prc_classification
+        if self.class_mode == 'mean':
+            self.class_head = nn.Sequential(
+                                            Reduce('b n d -> b d', 'mean'),
+                                            nn.LayerNorm(latent_dim),
+                                            nn.Linear(latent_dim, num_labels)
+                                           )
+        elif self.class_mode == 'cls':
+            for perceiver in self.multi_perceiver:
+                cls_token = nn.Parameter(torch.randn(1, int(cfg.prc_latent_dim)))
+                perceiver.latents = nn.Parameter(torch.cat((cls_token, perceiver.latents), dim=0))
+
+            self.class_head = nn.Sequential(nn.LayerNorm(int(cfg.prc_latent_dim)),
+                                            nn.Linear(int(cfg.prc_latent_dim), num_labels))
 
     def forward(self, x):
         if self.feat_proj:
@@ -295,7 +344,13 @@ class MultiPerceiverWav2Vec2(nn.Module):
             latents.append(latent)
 
         x = torch.cat(latents, dim=1)
-        return self.to_logits(x)
+
+        if self.class_mode == 'mean':
+            pass
+        elif self.class_mode == 'cls':
+            x = x[:, 0, :]
+
+        return self.class_head(x)
 
     def build_multi_perceiver(self, cfg, num_labels):
         multi_perceiver_args = [cfg.prc_input_channels,
