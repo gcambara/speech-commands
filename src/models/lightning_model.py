@@ -13,6 +13,7 @@ import torchmetrics
 from ..datamodules.augmentations import SpectrogramAugmentations
 from ..modules.features import Featurizer
 from ..modules.classifiers import KWT, LeNet, MultiPerceiverWav2Vec2, PerceiverModel, PerceiverWav2Vec2
+from ..optim.schedulers import ConsecutiveLR
 
 class LightningModel(pl.LightningModule):
     '''Base class for the Speech Commands Detection models'''
@@ -39,6 +40,8 @@ class LightningModel(pl.LightningModule):
         self.lr = cfg.lr
         self.lr_scheduler = cfg.lr_scheduler
         self.lr_gamma = cfg.lr_gamma
+        self.lr_milestones = [int(milestone) for milestone in cfg.lr_milestones.split(',')]
+        self.schedulers = cfg.schedulers.split(',')
         self.lr_step_size = cfg.lr_step_size
         self.lr_min = cfg.lr_min
         self.lr_max_epochs = cfg.lr_max_epochs
@@ -196,6 +199,29 @@ class LightningModel(pl.LightningModule):
 
         return optimizer
 
+    def get_scheduler(self, optimizer, scheduler_name):
+        if scheduler_name == 'step_lr':
+            scheduler = StepLR(optimizer, step_size=self.lr_step_size, gamma=self.lr_gamma)
+        elif scheduler_name == 'cosine':
+            if self.lr_warmup_epochs > 0:
+                 scheduler = LinearWarmupCosineAnnealingLR(optimizer,
+                                                           warmup_epochs=self.lr_warmup_epochs,
+                                                           max_epochs=self.lr_max_epochs,
+                                                           eta_min=self.lr_min)
+            else:
+                scheduler = CosineAnnealingLR(optimizer,
+                                              T_max=self.lr_max_epochs,
+                                              eta_min=self.lr_min)
+        elif scheduler_name == 'consecutive':
+            schedulers = []
+            for sub_scheduler in self.schedulers:
+                schedulers.append(self.get_scheduler(optimizer, sub_scheduler))
+            scheduler = ConsecutiveLR(optimizer, schedulers, milestones=self.lr_milestones)
+        else:
+            raise NotImplementedError(f"Warning! Unrecognized learning rate scheduler {scheduler_name}. Training will be done without a scheduler.")
+
+        return scheduler
+
     def log_avg_loss(self, outputs):
         avg_loss = 0
         for index, batch_output in enumerate(outputs):
@@ -208,18 +234,6 @@ class LightningModel(pl.LightningModule):
         optimizer = self.get_optimizer(self.optimizer)
         if self.lr_scheduler == 'constant':
             return optimizer
-        elif self.lr_scheduler == 'step_lr':
-            scheduler = StepLR(optimizer, step_size=self.lr_step_size, gamma=self.lr_gamma)
-            return [optimizer], [scheduler]
-        elif self.lr_scheduler == 'cosine':
-            if self.lr_warmup_epochs > 0:
-                 scheduler = LinearWarmupCosineAnnealingLR(optimizer,
-                                                        warmup_epochs=self.lr_warmup_epochs,
-                                                        max_epochs=self.lr_max_epochs,
-                                                        eta_min=self.lr_min)
-            else:
-                scheduler = CosineAnnealingLR(optimizer, T_max=self.lr_max_epochs, eta_min=self.lr_min)
-            return [optimizer], [scheduler]
         else:
-            print(f"Warning! Unrecognized learning rate scheduler {self.lr_scheduler}. Training will be done without a scheduler.")
-            return optimizer
+            scheduler = self.get_scheduler(optimizer, self.lr_scheduler)
+            return [optimizer], [scheduler]

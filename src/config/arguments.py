@@ -73,7 +73,9 @@ def parse_arguments(stage='train'):
     # Training options
     parser.add_argument('--model', default='base', help='type of model to train: base | distil')
     parser.add_argument('--lr', type=float, default=1e-4, help='initial learning rate')
-    parser.add_argument('--lr_scheduler', default='step_lr', help='learning rate scheduler, options: constant | step_lr | cosine')
+    parser.add_argument('--lr_scheduler', default='step_lr', help='learning rate scheduler, options: constant | step_lr | cosine | consecutive')
+    parser.add_argument('--schedulers', default='cosine,step_lr', help='list of schedulers to use for compound schedulers like consecutive, for instance')
+    parser.add_argument('--lr_milestones', default='100', help='list of epoch milestones that determines when schedulers are changed for consecutive scheduler')
     parser.add_argument('--lr_gamma', type=float, default=0.9, help='multiplicative factor for the learning rate')
     parser.add_argument('--lr_step_size', type=int, default=1, help='number of epochs to wait before applying gamma to the learning rate')
     parser.add_argument('--lr_min', type=float, default=1e-6, help='minimum learning rate for cosine scheduler')
