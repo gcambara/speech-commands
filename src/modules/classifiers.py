@@ -197,11 +197,14 @@ class PerceiverWav2Vec2(nn.Module):
 
         wav2vec2 = Wav2Vec2ForPreTraining.from_pretrained(cfg.teacher)
         wav2vec2_codevector = wav2vec2.quantizer.codevectors.squeeze()
-
         if cfg.clusterize_latents:
             wav2vec2_codevector = self.clusterize_latents(wav2vec2_codevector,
                                                           int(cfg.prc_num_latents))
-
+        elif cfg.latent_process_mode != 'none':
+            wav2vec2_codevector = self.process_latents(wav2vec2_codevector,
+                                                       int(cfg.prc_num_latents),
+                                                       int(cfg.prc_latent_dim),
+                                                       mode=cfg.latent_process_mode)
         self.perceiver.latents = nn.Parameter(wav2vec2_codevector)
 
         if self.class_mode == 'cls':

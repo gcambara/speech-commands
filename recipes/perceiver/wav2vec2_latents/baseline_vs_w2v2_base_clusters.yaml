@@ -1,7 +1,6 @@
 train:
   # Storage
   data: ./data
-  run_dir: recipes/perceiver/wav2vec2_latents/results/baseline_vs_w2v2_base
 
   # Task
   num_labels: 35
