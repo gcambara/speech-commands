@@ -7,6 +7,7 @@ import seaborn as sn
 import torch
 from torch import nn
 import torch.nn.functional as F
+from torch_optimizer import Lamb
 from torch.optim.lr_scheduler import CosineAnnealingLR, StepLR
 from pl_bolts.optimizers.lr_scheduler import LinearWarmupCosineAnnealingLR
 import torchmetrics
@@ -35,6 +36,7 @@ class LightningModel(pl.LightningModule):
         self.beta2 = cfg.beta2
         self.weight_decay = cfg.weight_decay
         self.optimizer_eps = cfg.optimizer_eps
+        self.lamb_clamp = cfg.lamb_clamp
 
         # LR scheduling
         self.lr = cfg.lr
@@ -194,6 +196,13 @@ class LightningModel(pl.LightningModule):
                                          betas=(self.beta1, self.beta2),
                                          eps=self.optimizer_eps,
                                          weight_decay=self.weight_decay)
+        elif optimizer_name == 'lamb':
+            optimizer = Lamb(self.parameters(),
+                             lr=self.lr,
+                             betas=(self.beta1, self.beta2),
+                             eps=self.optimizer_eps,
+                             weight_decay=self.weight_decay,
+                             clamp_value=self.lamb_clamp)
         else:
             raise NotImplementedError
 

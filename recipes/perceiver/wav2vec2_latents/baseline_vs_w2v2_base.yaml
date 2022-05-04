@@ -30,10 +30,10 @@ train:
   prc_latent_dim: 128
   latent_weight_norm: kaiming
 
-  prc_input_channels: 64
+  prc_input_channels: 192
   prc_input_axis: 1
-  prc_num_freq_bands: 12
-  prc_max_freq: 10.0
+  prc_num_freq_bands: 64
+  prc_max_freq: 224.0
   prc_depth: 6
   prc_cross_heads: 1
   prc_latent_heads: 8

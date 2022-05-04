@@ -89,11 +89,12 @@ def parse_arguments(stage='train'):
     parser.add_argument('--cfg', default='', help='path to the config model file to load')
 
     # Optimizer option
-    parser.add_argument('--optimizer', default='adamw', help='optimizer: adam | adamw')
+    parser.add_argument('--optimizer', default='adamw', help='optimizer: adam | adamw | lamb')
     parser.add_argument('--beta1', type=float, default=0.900, help='beta 1 for optimizer')
     parser.add_argument('--beta2', type=float, default=0.999, help='beta 1 for optimizer')
     parser.add_argument('--optimizer_eps', type=float, default=1e-08, help='epsilon for optimizer')
     parser.add_argument('--weight_decay', type=float, default=0.1, help='weight decay for optimizer')
+    parser.add_argument('--lamb_clamp', type=float, default=10.0, help='clam weight_norm for LAMB optimizer')
 
     # Logger options
     parser.add_argument('--tensorboard', dest='tensorboard', action='store_true', help='use tensorboard logger')
